@@ -1,0 +1,401 @@
+package handlers
+
+import (
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"hrd_room/backend/internal/domain"
+	"hrd_room/backend/internal/repository"
+	"hrd_room/backend/internal/usecase"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+type ExamHandler struct {
+	examUC    *usecase.ExamUseCase
+	sessionUC *usecase.SessionUseCase
+	qRepo     *repository.QuestionRepository
+	vRepo     *repository.ViolationRepository
+	wsHub     interface {
+		BroadcastToSession(sessionID string, msg interface{})
+	}
+	uploadDir string
+}
+
+func NewExamHandler(examUC *usecase.ExamUseCase, sessionUC *usecase.SessionUseCase, qRepo *repository.QuestionRepository, vRepo *repository.ViolationRepository, uploadDir string) *ExamHandler {
+	return &ExamHandler{examUC: examUC, sessionUC: sessionUC, qRepo: qRepo, vRepo: vRepo, uploadDir: uploadDir}
+}
+
+// POST /api/exam/join
+func (h *ExamHandler) Join(c *gin.Context) {
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userIDStr, _ := c.Get("user_id")
+	userID, _ := uuid.Parse(userIDStr.(string))
+
+	token, session, err := h.sessionUC.ValidateToken(c.Request.Context(), req.Token)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	participant, err := h.examUC.Join(c.Request.Context(), userID, token, session)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"participant_id": participant.ID,
+		"session_id":     session.ID,
+		"session_name":   session.Name,
+		"duration":       session.DurationMinutes,
+	})
+}
+
+// GET /api/exam/:sessionId/questions
+func (h *ExamHandler) GetQuestions(c *gin.Context) {
+	sessionID, err := uuid.Parse(c.Param("sessionId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		return
+	}
+
+	questions, err := h.examUC.GetQuestionsForParticipant(c.Request.Context(), sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, questions)
+}
+
+// POST /api/exam/:sessionId/answers
+func (h *ExamHandler) SubmitAnswers(c *gin.Context) {
+	var req usecase.SubmitRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	participantID, err := uuid.Parse(req.ParticipantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid participant_id"})
+		return
+	}
+
+	if err := h.examUC.SaveAnswers(c.Request.Context(), participantID, req.Answers); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Auto-grade immediately on submit
+	result, err := h.examUC.AutoGrade(c.Request.Context(), participantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "jawaban berhasil disubmit",
+		"result_id":      result.ID,
+		"grading_status": result.GradingStatus,
+	})
+}
+
+// GET /api/sessions/:id/results
+func (h *ExamHandler) GetResults(c *gin.Context) {
+	sessionID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		return
+	}
+	results, err := h.examUC.GetResults(c.Request.Context(), sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, results)
+}
+
+// GET /api/results/:participantId/answers
+func (h *ExamHandler) GetParticipantAnswers(c *gin.Context) {
+	participantID, err := uuid.Parse(c.Param("participantId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid participant id"})
+		return
+	}
+	answers, err := h.examUC.GetParticipantAnswers(c.Request.Context(), participantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, answers)
+}
+
+// PUT /api/results/:id/review
+func (h *ExamHandler) HRReview(c *gin.Context) {
+	var req usecase.HRReviewRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.examUC.HRReview(c.Request.Context(), req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "review berhasil disimpan"})
+}
+
+// POST /api/results/:id/finalize
+func (h *ExamHandler) FinalizeScore(c *gin.Context) {
+	resultID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid result id"})
+		return
+	}
+	if err := h.examUC.FinalizeScore(c.Request.Context(), resultID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "nilai berhasil difinalisasi"})
+}
+
+// GET /api/sessions/:id/participants
+func (h *ExamHandler) GetParticipants(c *gin.Context) {
+	sessionID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		return
+	}
+	participants, err := h.examUC.GetParticipants(c.Request.Context(), sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, participants)
+}
+
+// POST /api/violations
+func (h *ExamHandler) ReportViolation(c *gin.Context) {
+	var req struct {
+		ParticipantID string `json:"participant_id" binding:"required"`
+		SessionID     string `json:"session_id" binding:"required"`
+		ViolationType string `json:"violation_type" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	participantID, err := uuid.Parse(req.ParticipantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid participant_id"})
+		return
+	}
+
+	v := &domain.Violation{
+		ID:            uuid.New(),
+		ParticipantID: participantID,
+		ViolationType: req.ViolationType,
+	}
+
+	if err := h.vRepo.Create(c.Request.Context(), v); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"id": v.ID, "message": "pelanggaran dicatat"})
+}
+
+// GET /api/sessions/:id/violations
+func (h *ExamHandler) GetViolations(c *gin.Context) {
+	sessionID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		return
+	}
+	violations, err := h.vRepo.ListBySession(c.Request.Context(), sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, violations)
+}
+
+// ─── Question CRUD Handlers ──────────────────────────────────────────────────
+
+type QuestionHTTPHandler struct {
+	qRepo     *repository.QuestionRepository
+	uploadDir string
+}
+
+func NewQuestionHTTPHandler(qRepo *repository.QuestionRepository, uploadDir string) *QuestionHTTPHandler {
+	return &QuestionHTTPHandler{qRepo: qRepo, uploadDir: uploadDir}
+}
+
+// POST /api/questions
+func (h *QuestionHTTPHandler) Create(c *gin.Context) {
+	// Handle multipart for file uploads
+	sessionIDStr := c.PostForm("session_id")
+	qType := c.PostForm("type")
+	content := c.PostForm("content")
+
+	if sessionIDStr == "" || qType == "" || content == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "session_id, type, content required"})
+		return
+	}
+
+	sessionID, err := uuid.Parse(sessionIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session_id"})
+		return
+	}
+
+	q := &domain.Question{
+		ID:                   uuid.New(),
+		SessionID:            sessionID,
+		Type:                 qType,
+		Content:              content,
+		Weight:               1.0,
+		RequiresManualReview: qType == domain.QuestionTypePsychological || qType == domain.QuestionTypeShortAnswer,
+	}
+
+	// Handle image upload
+	file, header, err := c.Request.FormFile("image")
+	if err == nil && file != nil {
+		defer file.Close()
+		ext := filepath.Ext(header.Filename)
+		allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
+		if !allowed[strings.ToLower(ext)] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "format gambar tidak didukung"})
+			return
+		}
+
+		imgDir := filepath.Join(h.uploadDir, "questions")
+		if err := os.MkdirAll(imgDir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal membuat direktori upload"})
+			return
+		}
+
+		filename := fmt.Sprintf("%s_%s%s", q.ID.String(), time.Now().Format("20060102150405"), ext)
+		dstPath := filepath.Join(imgDir, filename)
+
+		if err := c.SaveUploadedFile(header, dstPath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menyimpan gambar"})
+			return
+		}
+
+		imgURL := "/uploads/questions/" + filename
+		q.ImageURL = &imgURL
+	}
+
+	if err := h.qRepo.Create(c.Request.Context(), q); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Handle options from form (JSON string)
+	optionsJSON := c.PostForm("options")
+	if optionsJSON != "" {
+		var options []struct {
+			Content   string `json:"content"`
+			IsCorrect bool   `json:"is_correct"`
+		}
+		if err := (&gin.Context{}).ShouldBindJSON(&options); err == nil {
+			for _, opt := range options {
+				o := &domain.QuestionOption{
+					ID:         uuid.New(),
+					QuestionID: q.ID,
+					Content:    opt.Content,
+					IsCorrect:  opt.IsCorrect,
+				}
+				_ = h.qRepo.CreateOption(c.Request.Context(), o)
+			}
+		}
+	}
+
+	q, _ = h.qRepo.FindByID(c.Request.Context(), q.ID)
+	c.JSON(http.StatusCreated, q)
+}
+
+// GET /api/sessions/:id/questions (for HR)
+func (h *QuestionHTTPHandler) ListBySession(c *gin.Context) {
+	sessionID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		return
+	}
+	questions, err := h.qRepo.ListBySession(c.Request.Context(), sessionID, false)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, questions)
+}
+
+// PUT /api/questions/:id
+func (h *QuestionHTTPHandler) Update(c *gin.Context) {
+	qID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid question id"})
+		return
+	}
+
+	q, err := h.qRepo.FindByID(c.Request.Context(), qID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "question not found"})
+		return
+	}
+
+	if t := c.PostForm("type"); t != "" {
+		q.Type = t
+	}
+	if content := c.PostForm("content"); content != "" {
+		q.Content = content
+	}
+
+	// Handle new image upload
+	file, header, err := c.Request.FormFile("image")
+	if err == nil && file != nil {
+		defer file.Close()
+		ext := filepath.Ext(header.Filename)
+		imgDir := filepath.Join(h.uploadDir, "questions")
+		os.MkdirAll(imgDir, 0755)
+		filename := fmt.Sprintf("%s_%s%s", q.ID.String(), time.Now().Format("20060102150405"), ext)
+		dstPath := filepath.Join(imgDir, filename)
+		if err := c.SaveUploadedFile(header, dstPath); err == nil {
+			imgURL := "/uploads/questions/" + filename
+			q.ImageURL = &imgURL
+		}
+	}
+
+	if err := h.qRepo.Update(c.Request.Context(), q); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, q)
+}
+
+// DELETE /api/questions/:id
+func (h *QuestionHTTPHandler) Delete(c *gin.Context) {
+	qID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid question id"})
+		return
+	}
+	if err := h.qRepo.Delete(c.Request.Context(), qID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "soal berhasil dihapus"})
+}
