@@ -8,9 +8,6 @@
         <h2 class="text-3xl font-bold tracking-tight">Hasil Ujian & Evaluasi</h2>
       </div>
       <div class="flex gap-2">
-        <Button variant="secondary" @click="autoGrade" :disabled="grading" class="border">
-          <Wand2Icon class="w-4 h-4 mr-2" /> Auto-Grade Pilihan Ganda
-        </Button>
       </div>
     </div>
 
@@ -20,6 +17,11 @@
         <CardDescription>Review hasil grading otomatis dan berikan nilai manual untuk esai.</CardDescription>
       </CardHeader>
       <CardContent>
+        <Alert v-if="alertMessage" :variant="alertVariant" class="mb-4">
+          <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
+          <AlertDescription>{{ alertMessage }}</AlertDescription>
+        </Alert>
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -41,7 +43,7 @@
                 <Badge :variant="res.status === 'Finalized' ? 'default' : 'secondary'">{{ res.status }}</Badge>
               </TableCell>
               <TableCell class="text-right">
-                <Button size="sm" @click="openReview(res)">Review Esai</Button>
+                 <Button size="sm" @click="submitFinalize(res)" :disabled="res.status === 'completed'" v-if="res.status !== 'completed'">Finalisasi</Button>
               </TableCell>
             </TableRow>
             <TableRow v-if="results.length === 0">
@@ -52,42 +54,7 @@
       </CardContent>
     </Card>
 
-    <!-- Dialog for Manual Review (Simplified) -->
-    <Dialog v-model:open="showReviewDialog" class="max-w-4xl">
-      <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Review Manual: {{ currentReview?.participant?.user?.name }}</DialogTitle>
-          <DialogDescription>
-            Berikan nilai dan catatan HR untuk jawaban subyektif (Esai/Psikologi).
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div class="space-y-6 my-4">
-          <!-- In a real app, you would fetch the full answers for this participant. 
-               This is a simplified assumption where answers are part of the result payload or fetched separately. -->
-          <Card class="border-orange-200 bg-orange-50/20">
-            <CardHeader>
-              <CardTitle class="text-base text-orange-800">HR Notes & Penyesuaian Skor</CardTitle>
-            </CardHeader>
-            <CardContent class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-2">
-                <Label>Skor Total Final (0-100)</Label>
-                <Input type="number" v-model.number="reviewForm.total_score" min="0" max="100"/>
-              </div>
-              <div class="space-y-2">
-                <Label>Catatan HR</Label>
-                <textarea v-model="reviewForm.hr_notes" class="w-full p-2 border rounded resize-y focus:ring-1 focus:ring-primary outline-none" rows="3" placeholder="Contoh: Jawaban esai sangat analitis..."></textarea>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" @click="showReviewDialog = false">Batal</Button>
-          <Button variant="default" @click="submitFinalize">Finalisasi Nilai</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </div>
 </template>
 
@@ -99,65 +66,45 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { ArrowLeftIcon, Wand2Icon } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
+import { ArrowLeftIcon } from 'lucide-vue-next'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const router = useRouter()
 const route = useRoute()
 const sessionId = route.params.id as string
 
 const results = ref<any[]>([])
-const grading = ref(false)
+const alertMessage = ref('')
+const alertVariant = ref<'default' | 'destructive'>('default')
 
-const showReviewDialog = ref(false)
-const currentReview = ref<any>(null)
-const reviewForm = ref({ total_score: 0, hr_notes: '' })
+const showSuccess = (message: string) => {
+  alertVariant.value = 'default'
+  alertMessage.value = message
+}
+
+const showError = (message: string) => {
+  alertVariant.value = 'destructive'
+  alertMessage.value = message
+}
 
 const loadResults = async () => {
   try {
     const res = await client.get(`/sessions/${sessionId}/results`)
     results.value = res.data || []
   } catch (e) {
-    toast.error('Gagal memuat hasil ujian')
+    showError('Gagal memuat hasil ujian')
   }
 }
 
 onMounted(loadResults)
 
-const autoGrade = async () => {
-  grading.value = true
+const submitFinalize = async (res: any) => {
   try {
-    const res = await client.post(`/sessions/${sessionId}/grade`)
-    toast.success(res.data.message || 'Auto grading selesai')
-    await loadResults()
-  } catch (e: any) {
-    toast.error(e.response?.data?.error || 'Gagal melakukan grading otomatis')
-  } finally {
-    grading.value = false
-  }
-}
-
-const openReview = (res: any) => {
-  currentReview.value = res
-  reviewForm.value.total_score = res.total_score
-  reviewForm.value.hr_notes = res.hr_notes || ''
-  showReviewDialog.value = true
-}
-
-const submitFinalize = async () => {
-  try {
-    await client.post(`/results/${currentReview.value.id}/finalize`, {
-      total_score: reviewForm.value.total_score,
-      hr_notes: reviewForm.value.hr_notes
-    })
-    toast.success('Nilai berhasil di-finalisasi')
-    showReviewDialog.value = false
+    await client.post(`/results/${res.id}/finalize`)
+    showSuccess('Nilai berhasil di-finalisasi')
     await loadResults()
   } catch(e) {
-    toast.error('Gagal finalisasi nilai')
+    showError('Gagal finalisasi nilai')
   }
 }
 </script>

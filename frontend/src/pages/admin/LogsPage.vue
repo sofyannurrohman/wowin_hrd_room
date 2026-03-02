@@ -5,28 +5,29 @@
       <Button variant="outline" @click="loadLogs">Refresh</Button>
     </div>
 
+    <Alert v-if="alertMessage" :variant="alertVariant">
+      <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
+      <AlertDescription>{{ alertMessage }}</AlertDescription>
+    </Alert>
+
     <Card>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead class="w-[180px]">Waktu</TableHead>
-            <TableHead>Level</TableHead>
-            <TableHead>Event</TableHead>
-            <TableHead>Pengguna ID</TableHead>
-            <TableHead>IP Address</TableHead>
+            <TableHead>Aksi</TableHead>
+            <TableHead>Detail</TableHead>
+            <TableHead>Pengguna</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <TableRow v-for="log in logs" :key="log.id" class="text-sm">
             <TableCell class="text-slate-500 whitespace-nowrap">{{ new Date(log.created_at).toLocaleString() }}</TableCell>
             <TableCell>
-              <Badge :variant="log.level === 'error' ? 'destructive' : (log.level === 'warning' ? 'outline' : 'secondary')">
-                {{ log.level.toUpperCase() }}
-              </Badge>
+              <Badge variant="outline">{{ log.action.toUpperCase() }}</Badge>
             </TableCell>
-            <TableCell class="font-medium">{{ log.event }}</TableCell>
-            <TableCell class="font-mono text-xs">{{ log.user_id || 'System' }}</TableCell>
-            <TableCell class="font-mono text-xs">{{ log.ip_address || '-' }}</TableCell>
+            <TableCell class="font-medium">{{ log.detail }}</TableCell>
+            <TableCell class="font-mono text-xs">{{ log.user_name || log.user_id || 'System' }}</TableCell>
           </TableRow>
           <TableRow v-if="logs.length === 0">
              <TableCell colspan="5" class="text-center h-24 text-slate-500">Memuat log sistem...</TableCell>
@@ -44,16 +45,28 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { toast } from 'vue-sonner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const logs = ref<any[]>([])
+const alertMessage = ref('')
+const alertVariant = ref<'default' | 'destructive'>('default')
+
+const showSuccess = (message: string) => {
+  alertVariant.value = 'default'
+  alertMessage.value = message
+}
+
+const showError = (message: string) => {
+  alertVariant.value = 'destructive'
+  alertMessage.value = message
+}
 
 const loadLogs = async () => {
   try {
     const res = await client.get('/admin/logs?limit=100')
     logs.value = res.data || []
   } catch(e) {
-    toast.error('Gagal memuat log sistem')
+    showError('Gagal memuat log sistem')
   }
 }
 

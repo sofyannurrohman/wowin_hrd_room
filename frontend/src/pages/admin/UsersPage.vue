@@ -7,6 +7,11 @@
       </Button>
     </div>
 
+    <Alert v-if="alertMessage" :variant="alertVariant">
+      <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
+      <AlertDescription>{{ alertMessage }}</AlertDescription>
+    </Alert>
+
     <Card>
       <Table>
         <TableHeader>
@@ -24,7 +29,10 @@
             <TableCell>
               <Badge :variant="user.role_id === 1 ? 'default' : 'outline'">{{ user.role_id === 1 ? 'Super Admin' : 'HR' }}</Badge>
             </TableCell>
-            <TableCell class="text-right">
+            <TableCell class="text-right flex justify-end gap-1">
+              <Button variant="ghost" size="icon" @click="openEditDialog(user)">
+                <EditIcon class="w-4 h-4 text-primary" />
+              </Button>
               <Button variant="ghost" size="icon" @click="deleteUser(user.id)" :disabled="user.role_id === 1">
                 <TrashIcon class="w-4 h-4 text-destructive" />
               </Button>
@@ -45,6 +53,10 @@
         </DialogHeader>
         <div class="space-y-4 py-4">
           <div class="space-y-2">
+            <Label>Nama Lengkap</Label>
+            <Input v-model="form.name" type="text" placeholder="John Doe"/>
+          </div>
+          <div class="space-y-2">
             <Label>Email Akun</Label>
             <Input v-model="form.email" type="email" placeholder="hr.baru@hrdroom.com"/>
           </div>
@@ -56,6 +68,33 @@
         <DialogFooter>
           <Button variant="outline" @click="showCreateDialog = false">Batal</Button>
           <Button @click="createUser" :disabled="creating">Simpan</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Edit User Dialog -->
+    <Dialog v-model:open="showEditDialog">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Pengguna</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-4 py-4">
+          <div class="space-y-2">
+            <Label>Nama</Label>
+            <Input v-model="editForm.name" type="text" placeholder="Nama Lengkap"/>
+          </div>
+          <div class="space-y-2">
+            <Label>Email Akun</Label>
+            <Input v-model="editForm.email" type="email" placeholder="hr.baru@hrdroom.com"/>
+          </div>
+          <div class="space-y-2">
+            <Label>Role ID (1=Super Admin, 2=HR)</Label>
+            <Input v-model.number="editForm.role_id" type="number"/>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="showEditDialog = false">Batal</Button>
+          <Button @click="submitEditUser" :disabled="updating">Simpan</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -72,25 +111,72 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { UserPlusIcon, TrashIcon } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
+import { UserPlusIcon, TrashIcon, EditIcon } from 'lucide-vue-next'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const users = ref<any[]>([])
 const showCreateDialog = ref(false)
 const creating = ref(false)
+const alertMessage = ref('')
+const alertVariant = ref<'default' | 'destructive'>('default')
+
+const showSuccess = (message: string) => {
+  alertVariant.value = 'default'
+  alertMessage.value = message
+}
+
+const showError = (message: string) => {
+  alertVariant.value = 'destructive'
+  alertMessage.value = message
+}
 
 const form = ref({
+  name: '',
   email: '',
   password: '',
   role_id: 2 // 2 is typically HR
 })
+
+const showEditDialog = ref(false)
+const editingUser = ref<any>(null)
+const updating = ref(false)
+const editForm = ref({
+  name: '',
+  email: '',
+  role_id: 2
+})
+
+const openEditDialog = (user: any) => {
+  editingUser.value = user
+  editForm.value = {
+    name: user.name || '',
+    email: user.email || '',
+    role_id: user.role_id || 2
+  }
+  showEditDialog.value = true
+}
+
+const submitEditUser = async () => {
+  if (!editingUser.value) return
+  updating.value = true
+  try {
+    await client.put(`/admin/users/${editingUser.value.id}`, editForm.value)
+    toast.success('Pengguna berhasil diperbarui')
+    showEditDialog.value = false
+    await loadUsers()
+  } catch(e: any) {
+    toast.error(e.response?.data?.error || 'Gagal memperbarui pengguna')
+  } finally {
+    updating.value = false
+  }
+}
 
 const loadUsers = async () => {
   try {
     const res = await client.get('/admin/users')
     users.value = res.data || []
   } catch(e) {
-    toast.error('Gagal memuat daftar pengguna')
+    showError('Gagal memuat daftar pengguna')
   }
 }
 
@@ -101,13 +187,14 @@ const createUser = async () => {
   try {
     // Only super admin can register new HR
     await client.post('/auth/register', form.value)
-    toast.success('Pengguna HR berhasil ditambahkan')
+    showSuccess('Pengguna HR berhasil ditambahkan')
     showCreateDialog.value = false
+    form.value.name = ''
     form.value.email = ''
     form.value.password = ''
     await loadUsers()
   } catch(e: any) {
-    toast.error(e.response?.data?.error || 'Gagal menambahkan pengguna')
+    showError(e.response?.data?.error || 'Gagal menambahkan pengguna')
   } finally {
     creating.value = false
   }
@@ -117,10 +204,10 @@ const deleteUser = async (id: string) => {
   if (!confirm('Hapus pengguna ini?')) return
   try {
     await client.delete(`/admin/users/${id}`)
-    toast.success('Pengguna berhasil dihapus')
+    showSuccess('Pengguna berhasil dihapus')
     await loadUsers()
   } catch(e) {
-    toast.error('Gagal menghapus pengguna')
+    showError('Gagal menghapus pengguna')
   }
 }
 </script>

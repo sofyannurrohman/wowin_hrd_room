@@ -141,6 +141,8 @@ func main() {
 
 			// Questions
 			hrRoutes.GET("sessions/:id/questions", questionH.ListBySession)
+			hrRoutes.GET("questions", questionH.ListAll)
+			hrRoutes.GET("questions/:id", questionH.GetByID)
 			hrRoutes.POST("questions", questionH.Create)
 			hrRoutes.PUT("questions/:id", questionH.Update)
 			hrRoutes.DELETE("questions/:id", questionH.Delete)
@@ -161,6 +163,7 @@ func main() {
 		adminRoutes.Use(middleware.RequireRole("Super Admin"))
 		{
 			adminRoutes.GET("users", adminH.ListUsers)
+			adminRoutes.PUT("users/:id", adminH.UpdateUser)
 			adminRoutes.DELETE("users/:id", adminH.DeleteUser)
 			adminRoutes.GET("logs", adminH.GetLogs)
 		}

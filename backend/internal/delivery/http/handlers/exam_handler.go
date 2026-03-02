@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -343,6 +344,31 @@ func (h *QuestionHTTPHandler) ListBySession(c *gin.Context) {
 	c.JSON(http.StatusOK, questions)
 }
 
+// GET /api/questions
+func (h *QuestionHTTPHandler) ListAll(c *gin.Context) {
+	questions, err := h.qRepo.ListAll(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, questions)
+}
+
+// GET /api/questions/:id
+func (h *QuestionHTTPHandler) GetByID(c *gin.Context) {
+	qID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid question id"})
+		return
+	}
+	q, err := h.qRepo.FindByID(c.Request.Context(), qID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "question not found"})
+		return
+	}
+	c.JSON(http.StatusOK, q)
+}
+
 // PUT /api/questions/:id
 func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 	qID, err := uuid.Parse(c.Param("id"))
@@ -383,6 +409,30 @@ func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Update options if provided
+	optionsJSON := c.PostForm("options")
+	if optionsJSON != "" {
+		var options []struct {
+			Content   string `json:"content"`
+			IsCorrect bool   `json:"is_correct"`
+		}
+		// Manually unmarshal since Context ShouldBindJSON requires application/json and this is a form field
+		if err := json.Unmarshal([]byte(optionsJSON), &options); err == nil {
+			_ = h.qRepo.DeleteOptions(c.Request.Context(), q.ID)
+			for _, opt := range options {
+				o := &domain.QuestionOption{
+					ID:         uuid.New(),
+					QuestionID: q.ID,
+					Content:    opt.Content,
+					IsCorrect:  opt.IsCorrect,
+				}
+				_ = h.qRepo.CreateOption(c.Request.Context(), o)
+			}
+		}
+	}
+
+	q, _ = h.qRepo.FindByID(c.Request.Context(), qID)
 	c.JSON(http.StatusOK, q)
 }
 

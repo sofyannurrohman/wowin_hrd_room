@@ -5,7 +5,7 @@
         <Button variant="ghost" size="icon" @click="router.back()">
           <ArrowLeftIcon class="w-5 h-5" />
         </Button>
-        <h2 class="text-3xl font-bold tracking-tight">{{ session.title }}</h2>
+        <h2 class="text-3xl font-bold tracking-tight">{{ session.name }}</h2>
       </div>
       <div class="flex gap-2">
         <Button variant="outline" @click="router.push(`/sessions/${session.id}/results`)">
@@ -25,7 +25,7 @@
       <CardContent class="grid grid-cols-2 gap-4">
         <div>
           <Label class="text-muted-foreground">Waktu Pelaksanaan</Label>
-          <p>{{ new Date(session.start_time).toLocaleString() }} - {{ new Date(session.end_time).toLocaleString() }}</p>
+          <p>{{ new Date(session.schedule).toLocaleString() }} - {{ new Date(new Date(session.schedule).getTime() + session.duration_minutes * 60000).toLocaleString() }}</p>
         </div>
         <div>
           <Label class="text-muted-foreground">Durasi</Label>
@@ -33,7 +33,7 @@
         </div>
         <div>
           <Label class="text-muted-foreground">Status / Peserta</Label>
-          <p>{{ session.is_locked ? 'Terkunci' : 'Aktif' }} ({{ session.participant_count }} dari {{ session.participant_limit }})</p>
+          <p>{{ session.is_locked ? 'Terkunci' : 'Aktif' }} ({{ session.participant_count || 0 }} dari {{ session.max_participants }})</p>
         </div>
       </CardContent>
     </Card>
@@ -45,6 +45,11 @@
         <CardDescription>Buat token ujian baru dan distribusikan ke peserta.</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
+        <Alert v-if="alertMessage" :variant="alertVariant">
+          <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
+          <AlertDescription>{{ alertMessage }}</AlertDescription>
+        </Alert>
+
         <div class="flex items-center gap-4 pb-4 border-b">
            <Input v-model.number="tokenCount" type="number" min="1" max="50" class="w-32" />
            <Button @click="generateTokens" :disabled="generating">Generate Token Baru</Button>
@@ -61,11 +66,11 @@
           </TableHeader>
           <TableBody>
             <TableRow v-for="t in tokens" :key="t.id">
-              <TableCell class="font-mono cursor-pointer hover:text-primary transition-colors font-bold" @click="copy(t.token_plain)">
-                {{ t.token_plain }}
+              <TableCell class="font-mono" :class="t.token ? 'cursor-pointer hover:text-primary transition-colors font-bold' : 'text-slate-400'" @click="t.token ? copy(t.token) : null">
+                {{ t.token || '*** HIDDEN ***' }}
               </TableCell>
-              <TableCell>{{ t.max_usage - t.current_usage }} / {{ t.max_usage }}</TableCell>
-              <TableCell>{{ new Date(t.expires_at).toLocaleString() }}</TableCell>
+              <TableCell>{{ t.max_usage - (t.used_count || 0) }} / {{ t.max_usage }}</TableCell>
+              <TableCell>{{ t.expires_at ? new Date(t.expires_at).toLocaleString() : '-' }}</TableCell>
               <TableCell>
                 <Badge :variant="t.is_active ? 'default' : 'destructive'">{{ t.is_active ? 'Aktif' : 'Non-Aktif' }}</Badge>
               </TableCell>
@@ -89,7 +94,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeftIcon, MonitorPlayIcon, FileTextIcon } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const router = useRouter()
 const route = useRoute()
@@ -99,6 +104,18 @@ const session = ref<any>(null)
 const tokens = ref<any[]>([])
 const tokenCount = ref(1)
 const generating = ref(false)
+const alertMessage = ref('')
+const alertVariant = ref<'default' | 'destructive'>('default')
+
+const showSuccess = (message: string) => {
+  alertVariant.value = 'default'
+  alertMessage.value = message
+}
+
+const showError = (message: string) => {
+  alertVariant.value = 'destructive'
+  alertMessage.value = message
+}
 
 const loadData = async () => {
   try {
@@ -108,7 +125,7 @@ const loadData = async () => {
     const resT = await client.get(`/sessions/${sessionId}/tokens`)
     tokens.value = resT.data || []
   } catch (e) {
-    toast.error('Gagal memuat detail sesi.')
+    showError('Gagal memuat detail sesi.')
   }
 }
 
@@ -117,16 +134,23 @@ onMounted(loadData)
 const generateTokens = async () => {
   generating.value = true
   try {
-    for(let i=0; i<tokenCount.value; i++) {
-        await client.post(`/sessions/${sessionId}/tokens`, {
-            max_usage: 1, // typically 1 participant per token
-            expires_at: session.value.end_time
-        })
+    const end_time = new Date(new Date(session.value.schedule).getTime() + session.value.duration_minutes * 60000).toISOString()
+    const res = await client.post(`/sessions/${sessionId}/tokens`, {
+      count: tokenCount.value,
+      max_usage: 1, // typically 1 participant per token
+      expires_at: end_time
+    })
+    
+    showSuccess(`${tokenCount.value} Token berhasil dibuat`)
+    
+    // Merge new tokens with plainly visible token strings into the list
+    if (res.data && res.data.tokens) {
+      tokens.value = [...res.data.tokens, ...tokens.value]
+    } else {
+      await loadData()
     }
-    toast.success(`${tokenCount.value} Token berhasil dibuat`)
-    await loadData()
   } catch (e) {
-    toast.error('Gagal generate token')
+    showError('Gagal generate token')
   } finally {
     generating.value = false
   }
@@ -134,6 +158,6 @@ const generateTokens = async () => {
 
 const copy = (txt: string) => {
   navigator.clipboard.writeText(txt)
-  toast.success('Token tersalin ke clipboard')
+  showSuccess('Token tersalin ke clipboard')
 }
 </script>

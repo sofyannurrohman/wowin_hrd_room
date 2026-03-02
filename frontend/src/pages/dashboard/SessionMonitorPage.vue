@@ -102,7 +102,7 @@ onMounted(async () => {
     sessionParticipantsCount.value = s.data.participant_limit
     
     // Fetch initial list of participants already in session (Optional depending on API design)
-    const p = await client.get(`/exam/${sessionId}/participants`)
+    const p = await client.get(`/sessions/${sessionId}/participants`)
     onlineParticipants.value = p.data || []
     
     // Merge into local status

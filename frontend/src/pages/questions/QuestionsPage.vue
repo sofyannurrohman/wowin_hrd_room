@@ -7,6 +7,11 @@
       </Button>
     </div>
 
+    <Alert v-if="alertMessage" :variant="alertVariant">
+      <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
+      <AlertDescription>{{ alertMessage }}</AlertDescription>
+    </Alert>
+
     <Card>
       <Table>
         <TableHeader>
@@ -29,8 +34,13 @@
                 <span v-else class="text-slate-400">-</span>
             </TableCell>
             <TableCell>{{ q.session_id ? 'Terkait Sesi Tertentu' : 'Global Bank Soal' }}</TableCell>
-            <TableCell class="text-right">
-              <Button variant="ghost" size="sm">Edit</Button>
+            <TableCell class="text-right flex justify-end gap-1">
+              <Button variant="ghost" size="icon" @click="router.push(`/questions/edit/${q.id}`)">
+                <EditIcon class="w-4 h-4 text-primary" />
+              </Button>
+              <Button variant="ghost" size="icon" @click="deleteQuestion(q.id)">
+                <TrashIcon class="w-4 h-4 text-destructive" />
+              </Button>
             </TableCell>
           </TableRow>
           <TableRow v-if="questions.length === 0">
@@ -51,18 +61,43 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { PlusIcon, ImageIcon } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
+import { PlusIcon, ImageIcon, EditIcon, TrashIcon } from 'lucide-vue-next'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const router = useRouter()
 const questions = ref<any[]>([])
+const alertMessage = ref('')
+const alertVariant = ref<'default' | 'destructive'>('default')
 
-onMounted(async () => {
+const showSuccess = (message: string) => {
+  alertVariant.value = 'default'
+  alertMessage.value = message
+}
+
+const showError = (message: string) => {
+  alertVariant.value = 'destructive'
+  alertMessage.value = message
+}
+
+const loadQuestions = async () => {
   try {
     const res = await client.get('/questions')
     questions.value = res.data || []
   } catch(e) {
-    toast.error('Gagal memuat bank soal')
+    showError('Gagal memuat bank soal')
   }
-})
+}
+
+onMounted(loadQuestions)
+
+const deleteQuestion = async (id: string) => {
+  if (!confirm('Hapus soal ini dari bank soal?')) return
+  try {
+    await client.delete(`/questions/${id}`)
+    showSuccess('Soal berhasil dihapus')
+    await loadQuestions()
+  } catch (e: any) {
+    showError(e.response?.data?.error || 'Gagal menghapus soal')
+  }
+}
 </script>

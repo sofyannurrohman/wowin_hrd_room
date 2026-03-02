@@ -77,6 +77,16 @@ const router = createRouter({
           component: () => import('../pages/questions/QuestionsPage.vue')
         },
         {
+          path: '/questions/create',
+          name: 'questionsCreate',
+          component: () => import('../pages/questions/QuestionCreatePage.vue')
+        },
+        {
+          path: '/questions/edit/:id',
+          name: 'questionsEdit',
+          component: () => import('../pages/questions/QuestionEditPage.vue')
+        },
+        {
           path: '/admin/users',
           name: 'adminUsers',
           component: () => import('../pages/admin/UsersPage.vue'),
@@ -87,7 +97,7 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
   
   // if not authenticated and it requires auth, fetch profile or redirect

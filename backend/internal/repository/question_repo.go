@@ -70,6 +70,26 @@ func (r *QuestionRepository) ListBySession(ctx context.Context, sessionID uuid.U
 	return questions, nil
 }
 
+func (r *QuestionRepository) ListAll(ctx context.Context) ([]domain.Question, error) {
+	query := `SELECT id, session_id, type, content, image_url, weight, requires_manual_review, created_at FROM questions ORDER BY created_at DESC`
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var questions []domain.Question
+	for rows.Next() {
+		var q domain.Question
+		if err := rows.Scan(&q.ID, &q.SessionID, &q.Type, &q.Content, &q.ImageURL, &q.Weight, &q.RequiresManualReview, &q.CreatedAt); err != nil {
+			return nil, err
+		}
+		q.Options, _ = r.GetOptions(ctx, q.ID)
+		questions = append(questions, q)
+	}
+	return questions, nil
+}
+
 func (r *QuestionRepository) GetOptions(ctx context.Context, questionID uuid.UUID) ([]domain.QuestionOption, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT id, question_id, content, is_correct FROM question_options WHERE question_id=$1 ORDER BY id`, questionID)

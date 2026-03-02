@@ -2,8 +2,8 @@
   <div class="min-h-screen bg-muted/30 flex items-center justify-center p-4">
     <Card class="w-full max-w-md">
       <CardHeader class="space-y-1 text-center">
-        <CardTitle class="text-2xl">HRD Room Admin</CardTitle>
-        <CardDescription>Login as HR or Super Admin</CardDescription>
+        <CardTitle class="text-2xl">Wowin HRD Room</CardTitle>
+        <CardDescription>Gunakan Akun HR untuk login ke sistem</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
         <div class="space-y-2">

@@ -21,13 +21,13 @@
         </TableHeader>
         <TableBody>
           <TableRow v-for="s in sessionStore.sessions" :key="s.id">
-            <TableCell class="font-medium">{{ s.title }}</TableCell>
-            <TableCell>{{ new Date(s.start_time).toLocaleString() }}</TableCell>
-            <TableCell>{{ new Date(s.end_time).toLocaleString() }}</TableCell>
+            <TableCell class="font-medium">{{ s.name }}</TableCell>
+            <TableCell>{{ new Date(s.schedule).toLocaleString() }}</TableCell>
+            <TableCell>{{ new Date(new Date(s.schedule).getTime() + s.duration_minutes * 60000).toLocaleString() }}</TableCell>
             <TableCell>
               <Badge :variant="getStatusVariant(s)">{{ getStatus(s) }}</Badge>
             </TableCell>
-            <TableCell>{{ s.participant_count }} / {{ s.participant_limit }}</TableCell>
+            <TableCell>{{ s.participant_count || 0 }} / {{ s.max_participants }}</TableCell>
             <TableCell class="text-right flex justify-end gap-2">
               <Button variant="outline" size="sm" @click="router.push(`/sessions/${s.id}`)">Detail</Button>
               <Button variant="default" size="sm" @click="router.push(`/sessions/${s.id}/monitor`)">Monitor</Button>
@@ -63,8 +63,8 @@ onMounted(async () => {
 const getStatus = (session: any) => {
   if (session.is_locked) return 'Terkunci'
   const now = new Date()
-  const start = new Date(session.start_time)
-  const end = new Date(session.end_time)
+  const start = new Date(session.schedule)
+  const end = new Date(start.getTime() + session.duration_minutes * 60000)
   if (now < start) return 'Akan Datang'
   if (now > end) return 'Berakhir'
   return 'Berjalan'

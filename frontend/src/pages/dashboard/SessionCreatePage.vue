@@ -9,6 +9,11 @@
 
     <Card>
       <CardContent class="pt-6 space-y-6">
+        <Alert v-if="alertMessage" :variant="alertVariant">
+          <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
+          <AlertDescription>{{ alertMessage }}</AlertDescription>
+        </Alert>
+
         <div class="space-y-2">
           <Label for="title">Nama Sesi</Label>
           <Input id="title" v-model="form.title" placeholder="e.g. Rekrutmen Programmer Gelombang 1" />
@@ -56,7 +61,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ArrowLeftIcon } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const router = useRouter()
 const sessionStore = useSessionStore()
@@ -74,24 +79,40 @@ const form = ref({
 })
 
 const loading = ref(false)
+const alertMessage = ref('')
+const alertVariant = ref<'default' | 'destructive'>('default')
+
+const showSuccess = (message: string) => {
+  alertVariant.value = 'default'
+  alertMessage.value = message
+}
+
+const showError = (message: string) => {
+  alertVariant.value = 'destructive'
+  alertMessage.value = message
+}
 
 const submit = async () => {
   if (!form.value.title) {
-    toast.error('Nama sesi harus diisi')
+    showError('Nama sesi harus diisi')
     return
   }
   loading.value = true
+  alertMessage.value = ''
   try {
     const payload = {
-      ...form.value,
-      start_time: new Date(form.value.start_time).toISOString(),
-      end_time: new Date(form.value.end_time).toISOString()
+      name: form.value.title,
+      schedule: new Date(form.value.start_time).toISOString(),
+      duration_minutes: form.value.duration_minutes,
+      max_participants: form.value.participant_limit,
+      randomize_questions: false,
+      show_score: false
     }
     await sessionStore.createSession(payload)
-    toast.success('Sesi berhasil dibuat')
+    showSuccess('Sesi berhasil dibuat')
     router.push('/sessions')
   } catch (e: any) {
-    toast.error(e.response?.data?.error || 'Gagal membuat sesi')
+    showError(e.response?.data?.error || 'Gagal membuat sesi')
   } finally {
     loading.value = false
   }
