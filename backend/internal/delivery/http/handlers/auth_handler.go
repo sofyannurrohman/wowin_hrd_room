@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"hrd_room/backend/internal/domain"
 	"hrd_room/backend/internal/usecase"
@@ -45,10 +46,21 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// Only allow Super Admin to register HR/Admin accounts
-	userRole, _ := c.Get("user_role")
 	if req.RoleID == 1 || req.RoleID == 2 {
-		if userRole != domain.RoleSuperAdmin {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization required to create HR accounts"})
+			return
+		}
+
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
+			return
+		}
+
+		claims, err := h.jwtManager.Validate(parts[1])
+		if err != nil || claims.Role != domain.RoleSuperAdmin {
 			c.JSON(http.StatusForbidden, gin.H{"error": "only super admin can create HR accounts"})
 			return
 		}
