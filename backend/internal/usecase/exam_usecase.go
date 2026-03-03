@@ -16,8 +16,10 @@ type ExamUseCase struct {
 	answerRepo      *repository.AnswerRepository
 	resultRepo      *repository.ResultRepository
 	questionRepo    *repository.QuestionRepository
+	moduleRepo      *repository.ModuleRepository
 	sessionRepo     *repository.SessionRepository
 	tokenRepo       *repository.TokenRepository
+	userRepo        *repository.UserRepository
 }
 
 func NewExamUseCase(
@@ -25,16 +27,20 @@ func NewExamUseCase(
 	ar *repository.AnswerRepository,
 	rr *repository.ResultRepository,
 	qr *repository.QuestionRepository,
+	mr *repository.ModuleRepository,
 	sr *repository.SessionRepository,
 	tr *repository.TokenRepository,
+	ur *repository.UserRepository,
 ) *ExamUseCase {
 	return &ExamUseCase{
 		participantRepo: pr,
 		answerRepo:      ar,
 		resultRepo:      rr,
 		questionRepo:    qr,
+		moduleRepo:      mr,
 		sessionRepo:     sr,
 		tokenRepo:       tr,
+		userRepo:        ur,
 	}
 }
 
@@ -42,9 +48,26 @@ type JoinRequest struct {
 	Token string `json:"token" binding:"required"`
 }
 
-func (uc *ExamUseCase) Join(ctx context.Context, userID uuid.UUID, token *domain.ExamToken, session *domain.Session) (*domain.SessionParticipant, error) {
+func (uc *ExamUseCase) Join(ctx context.Context, name, email string, age int, position string, token *domain.ExamToken, session *domain.Session) (*domain.SessionParticipant, error) {
+	// Find or create user
+	user, err := uc.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		user = &domain.User{
+			ID:              uuid.New(),
+			RoleID:          3, // Peserta
+			Name:            name,
+			Email:           email,
+			PasswordHash:    "",
+			Age:             &age,
+			AppliedPosition: &position,
+		}
+		if err := uc.userRepo.Create(ctx, user); err != nil {
+			return nil, err
+		}
+	}
+
 	// Check if already joined
-	existing, err := uc.participantRepo.FindByUserAndSession(ctx, userID, session.ID)
+	existing, err := uc.participantRepo.FindByUserAndSession(ctx, user.ID, session.ID)
 	if err == nil && existing != nil {
 		// Already joined, return existing
 		return existing, nil
@@ -53,7 +76,7 @@ func (uc *ExamUseCase) Join(ctx context.Context, userID uuid.UUID, token *domain
 	p := &domain.SessionParticipant{
 		ID:        uuid.New(),
 		SessionID: session.ID,
-		UserID:    userID,
+		UserID:    user.ID,
 		TokenID:   token.ID,
 		JoinedAt:  time.Now(),
 		Status:    "active",
@@ -71,13 +94,17 @@ func (uc *ExamUseCase) Join(ctx context.Context, userID uuid.UUID, token *domain
 	return p, nil
 }
 
-func (uc *ExamUseCase) GetQuestionsForParticipant(ctx context.Context, sessionID uuid.UUID) ([]domain.Question, error) {
+func (uc *ExamUseCase) GetModulesForParticipant(ctx context.Context, sessionID uuid.UUID) ([]domain.Module, error) {
+	return uc.moduleRepo.ListBySession(ctx, sessionID)
+}
+
+func (uc *ExamUseCase) GetQuestionsForModule(ctx context.Context, sessionID uuid.UUID, moduleID uuid.UUID) ([]domain.Question, error) {
 	session, err := uc.sessionRepo.FindByID(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	questions, err := uc.questionRepo.ListBySession(ctx, sessionID, session.RandomizeQuestions)
+	questions, err := uc.questionRepo.ListByModule(ctx, moduleID, session.RandomizeQuestions)
 	if err != nil {
 		return nil, err
 	}
@@ -147,9 +174,18 @@ func (uc *ExamUseCase) AutoGrade(ctx context.Context, participantID uuid.UUID) (
 		return nil, err
 	}
 
-	questions, err := uc.questionRepo.ListBySession(ctx, session.ID, false)
+	modules, err := uc.moduleRepo.ListBySession(ctx, session.ID)
 	if err != nil {
 		return nil, err
+	}
+
+	var questions []domain.Question
+	for _, m := range modules {
+		mqs, err := uc.questionRepo.ListByModule(ctx, m.ID, false)
+		if err != nil {
+			return nil, err
+		}
+		questions = append(questions, mqs...)
 	}
 
 	questionMap := make(map[uuid.UUID]*domain.Question)

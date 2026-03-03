@@ -42,6 +42,20 @@
             <Input id="limit" v-model.number="form.participant_limit" type="number" min="1" max="20" />
           </div>
         </div>
+
+        <div class="space-y-4 pt-4 border-t">
+          <Label>Pilih Modul Soal</Label>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div v-for="m in modules" :key="m.id" class="flex items-start space-x-3 p-3 border rounded-lg bg-card hover:bg-slate-50 transition-colors cursor-pointer" @click="toggleModule(m.id)">
+                 <input type="checkbox" :id="'mod-' + m.id" :checked="selectedModules.includes(m.id)" class="mt-1 w-4 h-4 rounded border-slate-300 accent-blue-600" />
+                 <div class="space-y-1.5 leading-none flex-1">
+                     <label :for="'mod-' + m.id" class="font-medium cursor-pointer block select-none">{{ m.name }}</label>
+                     <p class="text-xs text-muted-foreground line-clamp-2 select-none">{{ m.description || 'Tidak ada deskripsi' }}</p>
+                 </div>
+             </div>
+          </div>
+          <p class="text-xs text-muted-foreground mt-2">Peserta akan mengerjakan modul secara berurutan sesuai urutan Anda memilih box di atas.</p>
+        </div>
         <div class="flex justify-end pt-4">
           <Button @click="submit" :disabled="loading">
             {{ loading ? 'Menyimpan...' : 'Simpan Sesi' }}
@@ -53,9 +67,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
+import client from '@/api/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -82,6 +97,27 @@ const loading = ref(false)
 const alertMessage = ref('')
 const alertVariant = ref<'default' | 'destructive'>('default')
 
+const modules = ref<any[]>([])
+const selectedModules = ref<string[]>([])
+
+const toggleModule = (id: string) => {
+  const index = selectedModules.value.indexOf(id)
+  if (index === -1) {
+    selectedModules.value.push(id)
+  } else {
+    selectedModules.value.splice(index, 1)
+  }
+}
+
+onMounted(async () => {
+  try {
+    const res = await client.get('/modules')
+    modules.value = res.data.modules || []
+  } catch(e) {
+    showError('Gagal memuat daftar modul')
+  }
+})
+
 const showSuccess = (message: string) => {
   alertVariant.value = 'default'
   alertMessage.value = message
@@ -106,7 +142,8 @@ const submit = async () => {
       duration_minutes: form.value.duration_minutes,
       max_participants: form.value.participant_limit,
       randomize_questions: false,
-      show_score: false
+      show_score: false,
+      module_ids: selectedModules.value
     }
     await sessionStore.createSession(payload)
     showSuccess('Sesi berhasil dibuat')

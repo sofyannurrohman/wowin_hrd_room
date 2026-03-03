@@ -17,7 +17,7 @@
         <form @submit.prevent="submit" class="space-y-6">
           <div class="space-y-2">
             <Label for="type">Tipe Soal</Label>
-            <select v-model="form.type" id="type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+            <select v-model="form.type" id="type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
               <option value="multiple_choice">Pilihan Ganda</option>
               <option value="true_false">Benar / Salah</option>
               <option value="short_answer">Isian Singkat</option>
@@ -27,22 +27,22 @@
 
           <div class="space-y-2">
             <Label for="content">Pertanyaan</Label>
-            <textarea id="content" v-model="form.content" class="w-full p-3 border rounded-md min-h-[100px] outline-none focus:ring-2 focus:ring-primary" required></textarea>
+            <Textarea id="content" v-model="form.content" class="min-h-[100px]" required />
           </div>
 
           <div class="space-y-2">
             <Label for="image">Gambar Lampiran Baru (Opsional)</Label>
             <div v-if="existingImage" class="mb-2">
-              <span class="text-sm text-gray-500 block mb-1">Gambar saat ini:</span>
-              <img :src="getImageUrl(existingImage)" class="max-h-32 rounded-md object-contain border" />
+              <span class="text-sm text-muted-foreground block mb-1">Gambar saat ini:</span>
+              <img :src="getImageUrl(existingImage)" class="max-h-32 rounded-md object-contain border border-border" />
             </div>
             <Input id="image" type="file" @change="onFileChange" accept="image/*" class="cursor-pointer"/>
           </div>
 
           <div class="space-y-2">
-            <Label>Sesi Ujian</Label>
-            <Input type="text" :value="form.session_id ? 'Terkait Sesi Tertentu' : 'Global Bank Soal'" disabled class="bg-gray-100 dark:bg-gray-800" />
-            <p class="text-xs text-gray-500">Pemindahan sesi tidak diizinkan saat edit.</p>
+            <Label>Modul Ujian</Label>
+            <Input type="text" :value="form.module_id ? 'Terkait Modul Tertentu' : 'Global Bank Soal'" disabled class="bg-muted" />
+            <p class="text-xs text-muted-foreground">Pemindahan modul tidak diizinkan saat edit.</p>
           </div>
 
           <!-- Options Builder for MCQ -->
@@ -101,6 +101,7 @@ import client from '@/api/client'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ArrowLeftIcon, TrashIcon } from 'lucide-vue-next'
@@ -125,7 +126,7 @@ const showError = (message: string) => {
 }
 
 const form = ref({
-  session_id: '',
+  module_id: '',
   content: '',
   type: 'multiple_choice',
 })
@@ -155,7 +156,7 @@ onMounted(async () => {
         const data = res.data
         if (!data) return
         
-        form.value.session_id = data.session_id === '00000000-0000-0000-0000-000000000000' ? '' : data.session_id
+        form.value.module_id = data.module_id === '00000000-0000-0000-0000-000000000000' ? '' : data.module_id
         form.value.content = data.content
         form.value.type = data.type
         existingImage.value = data.image_url

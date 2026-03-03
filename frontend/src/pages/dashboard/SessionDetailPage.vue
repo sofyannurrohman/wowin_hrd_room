@@ -66,7 +66,7 @@
           </TableHeader>
           <TableBody>
             <TableRow v-for="t in tokens" :key="t.id">
-              <TableCell class="font-mono" :class="t.token ? 'cursor-pointer hover:text-primary transition-colors font-bold' : 'text-slate-400'" @click="t.token ? copy(t.token) : null">
+              <TableCell class="font-mono" :class="t.token ? 'cursor-pointer hover:text-primary transition-colors font-bold' : 'text-muted-foreground'" @click="t.token ? copy(t.token) : null">
                 {{ t.token || '*** HIDDEN ***' }}
               </TableCell>
               <TableCell>{{ t.max_usage - (t.used_count || 0) }} / {{ t.max_usage }}</TableCell>
@@ -80,7 +80,7 @@
       </CardContent>
     </Card>
   </div>
-  <div v-else class="text-center py-20 text-slate-500">Memuat detail sesi...</div>
+  <div v-else class="text-center py-20 text-muted-foreground">Memuat detail sesi...</div>
 </template>
 
 <script setup lang="ts">

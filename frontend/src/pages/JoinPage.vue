@@ -1,68 +1,250 @@
 <template>
-  <div class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-    <Card class="w-full max-w-md shadow-lg border-t-4 border-t-primary">
-      <CardHeader class="space-y-1 text-center pb-8 pt-6">
-        <CardTitle class="text-3xl font-bold tracking-tight text-primary">HRD Room</CardTitle>
-        <CardDescription class="text-base mt-2">Masuk ke Sesi Ujian Anda</CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-6">
-        <div class="space-y-3">
-          <Label for="token" class="text-sm font-semibold text-slate-700">Exam Token</Label>
-          <Input 
-            id="token" 
-            v-model="token" 
-            placeholder="Masukkan token 48 karakter" 
-            class="h-12 text-center tracking-widest font-mono bg-slate-100"
-            autocomplete="off"
-            @keyup.enter="handleJoin"
-          />
+  <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 py-8 md:py-12 font-sans overflow-y-auto">
+    <!-- Header Logo -->
+    <div class="w-full max-w-5xl mb-6 flex items-center gap-2">
+      <div class="text-primary font-bold text-xl flex items-center gap-2">
+        <div class="w-36 h-36 rounded-full flex items-center justify-center">
+          <img :src="viteLogo" alt="Logo" class="w-16 h-16" />
         </div>
-        
-        <Alert v-if="errorMsg" variant="destructive" class="animate-in fade-in slide-in-from-top-2">
-          <AlertTitle>Akses Ditolak</AlertTitle>
-          <AlertDescription>{{ errorMsg }}</AlertDescription>
-        </Alert>
-
-        <Button class="w-full h-12 text-lg font-medium transition-all hover:scale-[1.02]" @click="handleJoin" :disabled="loading || !token">
-          {{ loading ? 'Memverifikasi...' : 'Mulai Ujian' }}
-        </Button>
-      </CardContent>
-      <div class="px-6 pb-6 text-center text-xs text-slate-500">
-        Pastikan Anda memiliki koneksi internet yang stabil dan webcam yang berfungsi dengan baik sebelum memulai.
+        <span class="text-slate-800">HRD Room</span>
       </div>
-    </Card>
+    </div>
+
+    <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Main Registration Form -->
+      <Card class="col-span-1 md:col-span-2 shadow-sm border-0 rounded-2xl bg-white p-2">
+        <CardHeader class="space-y-2 pb-6">
+          <CardTitle class="text-3xl font-extrabold tracking-tight text-slate-900">Registrasi Pendaftar</CardTitle>
+          <CardDescription class="text-base text-slate-500">
+            Silakan masukkan kode aktivasi Anda dan verifikasi detail pribadi Anda untuk memulai Test.
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent class="space-y-8">
+          <!-- Activation Code Box -->
+          <div class="bg-blue-50/50 rounded-xl p-5 border border-blue-100">
+            <Label for="token" class="text-xs font-bold text-slate-700 tracking-wider mb-2 block uppercase">
+              KODE AKTIVASI <span class="text-red-500">*</span>
+            </Label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+              </div>
+              <Input 
+                id="token" 
+                v-model="form.token" 
+                placeholder="Masukkan kode (contoh. HR-2024-X)" 
+                class="pl-10 h-12 border-blue-200 focus-visible:ring-blue-500 bg-white"
+                autocomplete="off"
+              />
+            </div>
+            <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+              Disediakan oleh rekruter HR Anda dalam email undangan.
+            </p>
+          </div>
+
+          <!-- Personal Data Section -->
+          <div class="space-y-4">
+            <h3 class="text-lg font-bold text-slate-800 border-b pb-2">Data Pendaftar</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div class="space-y-2">
+                <Label for="name" class="text-sm font-semibold text-slate-700 block text-left">Nama Lengkap</Label>
+                <Input id="name" v-model="form.name" placeholder="John Doe" class="h-11 bg-slate-50/50" />
+              </div>
+              
+              <div class="space-y-2">
+                <Label for="age" class="text-sm font-semibold text-slate-700 block text-left">Umur</Label>
+                <Input id="age" type="number" v-model="form.age" placeholder="25" class="h-11 bg-slate-50/50" />
+              </div>
+
+              <div class="space-y-2">
+                <Label for="email" class="text-sm font-semibold text-slate-700 block text-left">Email</Label>
+                <Input id="email" type="email" v-model="form.email" placeholder="john.doe@example.com" class="h-11 bg-slate-50/50" />
+              </div>
+
+              <div class="space-y-2">
+                <Label for="position" class="text-sm font-semibold text-slate-700 block text-left">Posisi yang dilamar</Label>
+                <Select v-model="form.position">
+                  <SelectTrigger class="w-full h-11 bg-slate-50/50 text-slate-500">
+                    <SelectValue placeholder="Select a position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="pos in activePositions" :key="pos.id" :value="pos.name">{{ pos.name }}</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <Alert v-if="errorMsg" variant="destructive" class="bg-red-50 border-red-200">
+            <AlertTitle>Gagal</AlertTitle>
+            <AlertDescription>{{ errorMsg }}</AlertDescription>
+          </Alert>
+
+          <Button 
+            class="w-full h-14 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2" 
+            @click="handleJoin" 
+            :disabled="loading || !isFormValid"
+          >
+            {{ loading ? 'Memverifikasi...' : 'Mulai Test Sekarang' }}
+            <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <!-- Sidebar -->
+      <div class="col-span-1 space-y-6">
+        <Card class="shadow-sm border-0 rounded-2xl bg-white p-2">
+          <CardContent class="p-4 md:p-6 space-y-6">
+            <div class="space-y-5">
+              <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-2">
+                <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+                Aturan Test
+              </h3>
+              
+              <div class="flex gap-3 items-start">
+                <div class="mt-0.5 rounded-full bg-green-100 p-0.5 text-green-600 shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div>
+                  <p class="font-semibold text-sm text-slate-800 text-left">Internet Stabil</p>
+                  <p class="text-xs text-slate-500 text-left">Pastikan Internet Anda Stabil</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 items-start">
+                <div class="mt-0.5 rounded-full bg-green-100 p-0.5 text-green-600 shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div>
+                  <p class="font-semibold text-sm text-slate-800 text-left">Aktifkan Webcam</p>
+                  <p class="text-xs text-slate-500 text-left">Kamera Anda harus tetap menyala untuk tujuan pengawasan.</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 items-start">
+                <div class="mt-0.5 rounded-full bg-green-100 p-0.5 text-green-600 shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div>
+                  <p class="font-semibold text-sm text-slate-800 text-left">Dilarang Browsing Jawaban</p>
+                  <p class="text-xs text-slate-500 text-left">Keluar dari tab penilaian dapat mengakibatkan diskualifikasi.</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 items-start">
+                <div class="mt-0.5 rounded-full bg-green-100 p-0.5 text-green-600 shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div>
+                  <p class="font-semibold text-sm text-slate-800 text-left">Pilih Tempat yang Tenang</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-6 mt-6 border-t border-slate-100 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0 overflow-hidden">
+                <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Support" alt="Support" class="w-full h-full object-cover" />
+              </div>
+              <div class="text-left">
+                <p class="text-xs text-slate-500">Butuh bantuan?</p>
+                <a href="#" class="text-sm font-semibold text-blue-600 hover:underline">Contact Support</a>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+    
+    <!-- Footer layout -->
+    <div class="w-full max-w-5xl mt-12 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 pb-2">
+      <div class="mb-4 md:mb-0 text-center md:text-left">
+        <p>© 2026 PT Wowin Purnomo Putera.</p>
+        <p>All rights reserved.</p>
+      </div>
+      <div class="flex justify-center md:justify-end gap-6 font-medium">
+        <a href="#" class="hover:text-slate-800">Privacy Policy</a>
+        <a href="#" class="hover:text-slate-800">Terms of Service</a>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useExamStore } from '@/stores/exam'
+import client from '@/api/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import viteLogo from '@/assets/vite.svg'
 
 const router = useRouter()
 const examStore = useExamStore()
 
-const token = ref('')
+const form = ref({
+  token: '',
+  name: '',
+  age: '',
+  email: '',
+  position: ''
+})
+
 const errorMsg = ref('')
 const loading = ref(false)
+const activePositions = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const res = await client.get('/job-positions/active')
+    activePositions.value = res.data.positions || []
+  } catch (err) {
+    console.error('Failed to load active job positions', err)
+  }
+})
+
+const isFormValid = computed(() => {
+  return form.value.token.trim() !== '' &&
+         form.value.name.trim() !== '' &&
+         form.value.age !== '' &&
+         form.value.email.trim() !== '' &&
+         form.value.position !== ''
+})
 
 const handleJoin = async () => {
-  if (!token.value.trim()) return
+  if (!isFormValid.value) return
   
   errorMsg.value = ''
   loading.value = true
   try {
-    // Attempt to join using the token
-    await examStore.joinExam(token.value.trim())
-    // Success, proceed to camera check
+    const payload = {
+      token: form.value.token.trim(),
+      name: form.value.name.trim(),
+      email: form.value.email.trim(),
+      age: parseInt(form.value.age as unknown as string),
+      position: form.value.position
+    }
+    await examStore.joinExam(payload)
     router.push('/camera-check')
   } catch (err: any) {
-    errorMsg.value = err.response?.data?.error || 'Gagal masuk sesi ujian. Token tidak valid.'
+    errorMsg.value = err.response?.data?.error || 'Gagal masuk sesi ujian. Periksa kembali data atau token Anda.'
   } finally {
     loading.value = false
   }

@@ -35,15 +35,16 @@ func NewExamHandler(examUC *usecase.ExamUseCase, sessionUC *usecase.SessionUseCa
 // POST /api/exam/join
 func (h *ExamHandler) Join(c *gin.Context) {
 	var req struct {
-		Token string `json:"token" binding:"required"`
+		Token    string `json:"token" binding:"required"`
+		Name     string `json:"name" binding:"required"`
+		Email    string `json:"email" binding:"required,email"`
+		Age      int    `json:"age" binding:"required"`
+		Position string `json:"position" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	userIDStr, _ := c.Get("user_id")
-	userID, _ := uuid.Parse(userIDStr.(string))
 
 	token, session, err := h.sessionUC.ValidateToken(c.Request.Context(), req.Token)
 	if err != nil {
@@ -51,7 +52,7 @@ func (h *ExamHandler) Join(c *gin.Context) {
 		return
 	}
 
-	participant, err := h.examUC.Join(c.Request.Context(), userID, token, session)
+	participant, err := h.examUC.Join(c.Request.Context(), req.Name, req.Email, req.Age, req.Position, token, session)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -65,15 +66,32 @@ func (h *ExamHandler) Join(c *gin.Context) {
 	})
 }
 
-// GET /api/exam/:sessionId/questions
-func (h *ExamHandler) GetQuestions(c *gin.Context) {
+// GET /api/exam/:sessionId/modules
+func (h *ExamHandler) GetModules(c *gin.Context) {
 	sessionID, err := uuid.Parse(c.Param("sessionId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
 		return
 	}
 
-	questions, err := h.examUC.GetQuestionsForParticipant(c.Request.Context(), sessionID)
+	modules, err := h.examUC.GetModulesForParticipant(c.Request.Context(), sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, modules)
+}
+
+// GET /api/exam/:sessionId/modules/:moduleId/questions
+func (h *ExamHandler) GetQuestionsForModule(c *gin.Context) {
+	sessionID, err := uuid.Parse(c.Param("sessionId"))
+	moduleID, err2 := uuid.Parse(c.Param("moduleId"))
+	if err != nil || err2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ids"})
+		return
+	}
+
+	questions, err := h.examUC.GetQuestionsForModule(c.Request.Context(), sessionID, moduleID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -247,24 +265,24 @@ func NewQuestionHTTPHandler(qRepo *repository.QuestionRepository, uploadDir stri
 // POST /api/questions
 func (h *QuestionHTTPHandler) Create(c *gin.Context) {
 	// Handle multipart for file uploads
-	sessionIDStr := c.PostForm("session_id")
+	moduleIDStr := c.PostForm("module_id")
 	qType := c.PostForm("type")
 	content := c.PostForm("content")
 
-	if sessionIDStr == "" || qType == "" || content == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "session_id, type, content required"})
+	if moduleIDStr == "" || qType == "" || content == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "module_id, type, content required"})
 		return
 	}
 
-	sessionID, err := uuid.Parse(sessionIDStr)
+	moduleID, err := uuid.Parse(moduleIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid module_id"})
 		return
 	}
 
 	q := &domain.Question{
 		ID:                   uuid.New(),
-		SessionID:            sessionID,
+		ModuleID:             moduleID,
 		Type:                 qType,
 		Content:              content,
 		Weight:               1.0,
@@ -329,14 +347,14 @@ func (h *QuestionHTTPHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, q)
 }
 
-// GET /api/sessions/:id/questions (for HR)
-func (h *QuestionHTTPHandler) ListBySession(c *gin.Context) {
-	sessionID, err := uuid.Parse(c.Param("id"))
+// GET /api/modules/:id/questions (for HR)
+func (h *QuestionHTTPHandler) ListByModule(c *gin.Context) {
+	moduleID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid module id"})
 		return
 	}
-	questions, err := h.qRepo.ListBySession(c.Request.Context(), sessionID, false)
+	questions, err := h.qRepo.ListByModule(c.Request.Context(), moduleID, false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

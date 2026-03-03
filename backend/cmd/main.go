@@ -54,13 +54,18 @@ func main() {
 	participantRepo := repository.NewParticipantRepository(db)
 	answerRepo := repository.NewAnswerRepository(db)
 	resultRepo := repository.NewResultRepository(db)
+	moduleRepo := repository.NewModuleRepository(db)
 	violationRepo := repository.NewViolationRepository(db)
 	logRepo := repository.NewLogRepository(db)
+	dashboardRepo := repository.NewDashboardRepository(db)
+	jobPositionRepo := repository.NewJobPositionRepository(db)
 
 	// Use cases
 	authUC := usecase.NewAuthUseCase(userRepo, jwtManager)
-	sessionUC := usecase.NewSessionUseCase(sessionRepo, tokenRepo, logRepo)
-	examUC := usecase.NewExamUseCase(participantRepo, answerRepo, resultRepo, questionRepo, sessionRepo, tokenRepo)
+	sessionUC := usecase.NewSessionUseCase(sessionRepo, moduleRepo, tokenRepo, logRepo)
+	moduleUC := usecase.NewModuleUseCase(moduleRepo)
+	jobPositionUC := usecase.NewJobPositionUseCase(jobPositionRepo)
+	examUC := usecase.NewExamUseCase(participantRepo, answerRepo, resultRepo, questionRepo, moduleRepo, sessionRepo, tokenRepo, userRepo)
 
 	// WebSocket hub
 	hub := ws.NewHub()
@@ -68,9 +73,12 @@ func main() {
 	// Handlers
 	authH := handlers.NewAuthHandler(authUC, jwtManager)
 	sessionH := handlers.NewSessionHandler(sessionUC, uploadDir)
+	moduleH := handlers.NewModuleHandler(moduleUC)
+	jobPositionH := handlers.NewJobPositionHandler(jobPositionUC)
 	examH := handlers.NewExamHandler(examUC, sessionUC, questionRepo, violationRepo, uploadDir)
 	questionH := handlers.NewQuestionHTTPHandler(questionRepo, uploadDir)
 	adminH := handlers.NewAdminHandler(userRepo, logRepo)
+	dashboardH := handlers.NewDashboardHandler(dashboardRepo)
 	wsH := handlers.NewWSHandler(hub)
 
 	// Gin setup
@@ -106,6 +114,10 @@ func main() {
 			auth.POST("/login", authH.Login)
 			auth.POST("/register", authH.Register)
 		}
+
+		// Public exam endpoints
+		api.POST("/exam/join", examH.Join)
+		api.GET("/job-positions/active", jobPositionH.ListActive)
 	}
 
 	// ─── Authenticated Routes ─────────────────────────────────────────────────
@@ -116,8 +128,8 @@ func main() {
 		authAPI.GET("auth/me", authH.Me)
 
 		// Exam (participants)
-		authAPI.POST("exam/join", examH.Join)
-		authAPI.GET("exam/:sessionId/questions", examH.GetQuestions)
+		authAPI.GET("exam/:sessionId/modules", examH.GetModules)
+		authAPI.GET("exam/:sessionId/modules/:moduleId/questions", examH.GetQuestionsForModule)
 		authAPI.POST("exam/:sessionId/answers", examH.SubmitAnswers)
 		authAPI.POST("violations", examH.ReportViolation)
 
@@ -128,6 +140,10 @@ func main() {
 		hrRoutes := authAPI.Group("/")
 		hrRoutes.Use(middleware.RequireRole("HR", "Super Admin"))
 		{
+			// Dashboard & Global Participants
+			hrRoutes.GET("dashboard/stats", dashboardH.GetStats)
+			hrRoutes.GET("participants", dashboardH.ListParticipants)
+
 			// Sessions
 			hrRoutes.GET("sessions", sessionH.List)
 			hrRoutes.POST("sessions", sessionH.Create)
@@ -139,8 +155,22 @@ func main() {
 			hrRoutes.POST("sessions/:id/tokens", sessionH.GenerateTokens)
 			hrRoutes.GET("sessions/:id/tokens", sessionH.ListTokens)
 
+			// Modules
+			hrRoutes.GET("modules", moduleH.List)
+			hrRoutes.POST("modules", moduleH.Create)
+			hrRoutes.GET("modules/:id", moduleH.GetByID)
+			hrRoutes.PUT("modules/:id", moduleH.Update)
+			hrRoutes.DELETE("modules/:id", moduleH.Delete)
+
+			// Job Positions
+			hrRoutes.GET("job-positions", jobPositionH.ListAll)
+			hrRoutes.POST("job-positions", jobPositionH.Create)
+			hrRoutes.GET("job-positions/:id", jobPositionH.GetByID)
+			hrRoutes.PUT("job-positions/:id", jobPositionH.Update)
+			hrRoutes.DELETE("job-positions/:id", jobPositionH.Delete)
+
 			// Questions
-			hrRoutes.GET("sessions/:id/questions", questionH.ListBySession)
+			hrRoutes.GET("modules/:id/questions", questionH.ListByModule)
 			hrRoutes.GET("questions", questionH.ListAll)
 			hrRoutes.GET("questions/:id", questionH.GetByID)
 			hrRoutes.POST("questions", questionH.Create)

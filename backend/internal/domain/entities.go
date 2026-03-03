@@ -17,13 +17,15 @@ const (
 // ─── User ────────────────────────────────────────────────────────────────────
 
 type User struct {
-	ID           uuid.UUID `json:"id"`
-	RoleID       int       `json:"role_id"`
-	RoleName     string    `json:"role_name,omitempty"`
-	Name         string    `json:"name"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"-"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID              uuid.UUID `json:"id"`
+	RoleID          int       `json:"role_id"`
+	RoleName        string    `json:"role_name,omitempty"`
+	Name            string    `json:"name"`
+	Email           string    `json:"email"`
+	PasswordHash    string    `json:"-"`
+	Age             *int      `json:"age,omitempty"`
+	AppliedPosition *string   `json:"applied_position,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 // ─── Session ─────────────────────────────────────────────────────────────────
@@ -73,6 +75,22 @@ type SessionParticipant struct {
 	Status         string     `json:"status"` // active, disconnected, finished
 }
 
+// ─── Module ──────────────────────────────────────────────────────────────────
+
+type Module struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedBy   uuid.UUID `json:"created_by"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type SessionModule struct {
+	SessionID uuid.UUID `json:"session_id"`
+	ModuleID  uuid.UUID `json:"module_id"`
+	SortOrder int       `json:"sort_order"`
+}
+
 // ─── Question ────────────────────────────────────────────────────────────────
 
 const (
@@ -84,7 +102,7 @@ const (
 
 type Question struct {
 	ID                   uuid.UUID        `json:"id"`
-	SessionID            uuid.UUID        `json:"session_id"`
+	ModuleID             uuid.UUID        `json:"module_id"`
 	Type                 string           `json:"type"`
 	Content              string           `json:"content"`
 	ImageURL             *string          `json:"image_url"`
@@ -166,4 +184,14 @@ type SystemLog struct {
 	Action    string     `json:"action"`
 	Detail    string     `json:"detail"`
 	CreatedAt time.Time  `json:"created_at"`
+}
+
+// ─── Job Position ────────────────────────────────────────────────────────────
+
+type JobPosition struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

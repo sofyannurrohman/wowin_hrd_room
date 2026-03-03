@@ -19,7 +19,7 @@
             <TableHead class="w-[400px]">Konten Soal</TableHead>
             <TableHead>Tipe Soal</TableHead>
             <TableHead>Lampiran Gambar</TableHead>
-            <TableHead>Sesi (Opsional)</TableHead>
+            <TableHead>Modul (Opsional)</TableHead>
             <TableHead class="text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
@@ -30,10 +30,10 @@
               <Badge variant="outline">{{ q.type.replace('_', ' ').toUpperCase() }}</Badge>
             </TableCell>
             <TableCell>
-                <ImageIcon v-if="q.image_url" class="w-4 h-4 text-green-500" />
-                <span v-else class="text-slate-400">-</span>
+                <ImageIcon v-if="q.image_url" class="w-4 h-4 text-primary" />
+                <span v-else class="text-muted-foreground">-</span>
             </TableCell>
-            <TableCell>{{ q.session_id ? 'Terkait Sesi Tertentu' : 'Global Bank Soal' }}</TableCell>
+            <TableCell>{{ getModuleName(q.module_id) }}</TableCell>
             <TableCell class="text-right flex justify-end gap-1">
               <Button variant="ghost" size="icon" @click="router.push(`/questions/edit/${q.id}`)">
                 <EditIcon class="w-4 h-4 text-primary" />
@@ -66,6 +66,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const router = useRouter()
 const questions = ref<any[]>([])
+const modules = ref<any[]>([])
 const alertMessage = ref('')
 const alertVariant = ref<'default' | 'destructive'>('default')
 
@@ -81,11 +82,21 @@ const showError = (message: string) => {
 
 const loadQuestions = async () => {
   try {
-    const res = await client.get('/questions')
-    questions.value = res.data || []
+    const [resQ, resM] = await Promise.all([
+      client.get('/questions'),
+      client.get('/modules')
+    ])
+    questions.value = resQ.data || []
+    modules.value = resM.data.modules || []
   } catch(e) {
-    showError('Gagal memuat bank soal')
+    showError('Gagal memuat bank soal dan modul')
   }
+}
+
+const getModuleName = (moduleId: string) => {
+  if (!moduleId) return 'Global Bank Soal'
+  const mod = modules.value.find(m => m.id === moduleId)
+  return mod ? mod.name : 'Modul Tidak Diketahui'
 }
 
 onMounted(loadQuestions)

@@ -14,21 +14,23 @@ import (
 
 type SessionUseCase struct {
 	sessionRepo *repository.SessionRepository
+	moduleRepo  *repository.ModuleRepository
 	tokenRepo   *repository.TokenRepository
 	logRepo     *repository.LogRepository
 }
 
-func NewSessionUseCase(sr *repository.SessionRepository, tr *repository.TokenRepository, lr *repository.LogRepository) *SessionUseCase {
-	return &SessionUseCase{sessionRepo: sr, tokenRepo: tr, logRepo: lr}
+func NewSessionUseCase(sr *repository.SessionRepository, mr *repository.ModuleRepository, tr *repository.TokenRepository, lr *repository.LogRepository) *SessionUseCase {
+	return &SessionUseCase{sessionRepo: sr, moduleRepo: mr, tokenRepo: tr, logRepo: lr}
 }
 
 type CreateSessionRequest struct {
-	Name               string    `json:"name" binding:"required"`
-	Schedule           time.Time `json:"schedule" binding:"required"`
-	DurationMinutes    int       `json:"duration_minutes" binding:"required,min=1"`
-	MaxParticipants    int       `json:"max_participants"`
-	RandomizeQuestions bool      `json:"randomize_questions"`
-	ShowScore          bool      `json:"show_score"`
+	Name               string      `json:"name" binding:"required"`
+	Schedule           time.Time   `json:"schedule" binding:"required"`
+	DurationMinutes    int         `json:"duration_minutes" binding:"required,min=1"`
+	MaxParticipants    int         `json:"max_participants"`
+	RandomizeQuestions bool        `json:"randomize_questions"`
+	ShowScore          bool        `json:"show_score"`
+	ModuleIDs          []uuid.UUID `json:"module_ids"`
 }
 
 func (uc *SessionUseCase) Create(ctx context.Context, createdBy uuid.UUID, req CreateSessionRequest) (*domain.Session, error) {
@@ -51,6 +53,16 @@ func (uc *SessionUseCase) Create(ctx context.Context, createdBy uuid.UUID, req C
 	if err := uc.sessionRepo.Create(ctx, s); err != nil {
 		return nil, err
 	}
+
+	for i, mID := range req.ModuleIDs {
+		sm := &domain.SessionModule{
+			SessionID: s.ID,
+			ModuleID:  mID,
+			SortOrder: i,
+		}
+		_ = uc.moduleRepo.AddSessionModule(ctx, sm)
+	}
+
 	return s, nil
 }
 
@@ -76,7 +88,22 @@ func (uc *SessionUseCase) Update(ctx context.Context, id uuid.UUID, req CreateSe
 	s.MaxParticipants = req.MaxParticipants
 	s.RandomizeQuestions = req.RandomizeQuestions
 	s.ShowScore = req.ShowScore
-	return s, uc.sessionRepo.Update(ctx, s)
+
+	if err := uc.sessionRepo.Update(ctx, s); err != nil {
+		return nil, err
+	}
+
+	_ = uc.moduleRepo.DeleteSessionModules(ctx, s.ID)
+	for i, mID := range req.ModuleIDs {
+		sm := &domain.SessionModule{
+			SessionID: s.ID,
+			ModuleID:  mID,
+			SortOrder: i,
+		}
+		_ = uc.moduleRepo.AddSessionModule(ctx, sm)
+	}
+
+	return s, nil
 }
 
 func (uc *SessionUseCase) Delete(ctx context.Context, id uuid.UUID) error {

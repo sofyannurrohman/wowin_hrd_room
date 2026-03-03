@@ -1,80 +1,230 @@
 <template>
-  <div class="space-y-6 max-w-7xl mx-auto">
-    <div class="flex items-center justify-between">
-      <h2 class="text-3xl font-bold tracking-tight">Manajemen Sesi Ujian</h2>
-      <Button @click="router.push('/sessions/create')">
-        Sesi Baru
-      </Button>
+  <div class="space-y-6 max-w-[1200px] mx-auto pb-10">
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <h2 class="text-3xl font-extrabold tracking-tight text-slate-800">Sessions Management</h2>
+        <p class="text-slate-500 mt-1">Manage and monitor your assessment sessions.</p>
+      </div>
+      <div class="flex items-center gap-3 w-full md:w-auto">
+        <div class="relative w-full md:w-[280px]">
+          <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input 
+            v-model="searchQuery"
+            placeholder="Search sessions..." 
+            class="pl-9 h-10 border-slate-200 focus-visible:ring-blue-500 bg-white"
+          />
+        </div>
+        <Button class="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 whitespace-nowrap" @click="router.push('/sessions/create')">
+          <PlusIcon class="w-4 h-4" /> Create Session
+        </Button>
+      </div>
     </div>
 
-    <Card>
+    <Card class="border border-slate-100 shadow-sm rounded-2xl bg-white overflow-hidden">
+      <!-- Filters Bar -->
+      <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+          <div class="flex items-center gap-2">
+            <FilterIcon class="w-4 h-4 text-slate-400" />
+            <span class="text-sm font-semibold text-slate-600">Filter by:</span>
+          </div>
+          
+          <Select v-model="statusFilter">
+            <SelectTrigger class="w-[160px] h-9 bg-white border-slate-200 text-sm">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <div class="flex items-center bg-white border border-slate-200 rounded-md h-9 px-3 text-sm text-slate-500 w-full sm:w-auto">
+             <CalendarDaysIcon class="w-4 h-4 mr-2 opacity-50" />
+             <span>Start Date</span>
+             <span class="mx-2 text-slate-300">-</span>
+             <span>End Date</span>
+          </div>
+        </div>
+
+        <Button variant="ghost" size="sm" class="text-slate-500 hover:text-slate-800" @click="clearFilters">
+          Clear Filters
+        </Button>
+      </div>
+
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Nama Sesi</TableHead>
-            <TableHead>Waktu Mulai</TableHead>
-            <TableHead>Waktu Selesai</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Kapasitas</TableHead>
-            <TableHead class="text-right">Aksi</TableHead>
+          <TableRow class="border-b border-slate-100 hover:bg-transparent">
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-6">Session Name</TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Code</TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Start Date</TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">End Date</TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4 text-center">Participants</TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Status</TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-6 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="s in sessionStore.sessions" :key="s.id">
-            <TableCell class="font-medium">{{ s.name }}</TableCell>
-            <TableCell>{{ new Date(s.schedule).toLocaleString() }}</TableCell>
-            <TableCell>{{ new Date(new Date(s.schedule).getTime() + s.duration_minutes * 60000).toLocaleString() }}</TableCell>
-            <TableCell>
-              <Badge :variant="getStatusVariant(s)">{{ getStatus(s) }}</Badge>
+          <TableRow v-for="s in filteredSessions" :key="s.id" class="border-b border-slate-100 transition-colors hover:bg-slate-50/50 group">
+            <TableCell class="py-4 px-6">
+              <div class="font-bold text-slate-800 text-sm">{{ s.name }}</div>
+              <div class="text-[13px] text-slate-500 mt-0.5">Technical Assessment</div>
             </TableCell>
-            <TableCell>{{ s.participant_count || 0 }} / {{ s.max_participants }}</TableCell>
-            <TableCell class="text-right flex justify-end gap-2">
-              <Button variant="outline" size="sm" @click="router.push(`/sessions/${s.id}`)">Detail</Button>
-              <Button variant="default" size="sm" @click="router.push(`/sessions/${s.id}/monitor`)">Monitor</Button>
+            <TableCell class="py-4 px-4">
+              <div class="bg-slate-100 text-slate-600 text-[11px] font-bold px-2 py-1 rounded w-fit tracking-wider">
+                {{ getSessionCodeFromName(s.name) }}
+              </div>
+            </TableCell>
+            <TableCell class="py-4 px-4 text-sm">
+              <div class="text-slate-800 font-medium">{{ formatDateMonthDay(s.schedule) }}</div>
+              <div class="text-slate-500 text-xs mt-0.5">{{ formatTime(s.schedule) }}</div>
+            </TableCell>
+            <TableCell class="py-4 px-4 text-sm">
+               <div class="text-slate-800 font-medium">{{ formatDateMonthDay(getEndDate(s)) }}</div>
+               <div class="text-slate-500 text-xs mt-0.5">{{ formatTime(getEndDate(s)) }}</div>
+            </TableCell>
+            <TableCell class="py-4 px-4 text-center">
+              <div class="inline-flex items-center justify-center bg-blue-50 text-blue-600 font-bold text-xs h-6 px-3 rounded-full">
+                {{ s.participant_count || 0 }}
+              </div>
+            </TableCell>
+            <TableCell class="py-4 px-4">
+              <Badge :class="getStatusBadgeClass(getStatusText(s))" class="font-medium text-[11px] px-2.5 py-1 rounded-full border-0 inline-flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full" :class="getStatusDotClass(getStatusText(s))"></div>
+                {{ getStatusText(s) }}
+              </Badge>
+            </TableCell>
+            <TableCell class="py-4 px-6 text-right">
+              <div class="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 h-8 w-8 rounded-full" @click="router.push(`/sessions/${s.id}`)">
+                  <EyeIcon class="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 h-8 w-8 rounded-full" @click="router.push(`/sessions/${s.id}`)">
+                  <Edit2Icon class="w-4 h-4" />
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
           
-          <TableRow v-if="sessionStore.sessions.length === 0">
-             <TableCell colspan="6" class="text-center h-24">Tidak ada sesi ujian yang ditemukan.</TableCell>
+          <TableRow v-if="filteredSessions.length === 0">
+             <TableCell colspan="7" class="text-center h-48 text-slate-500">
+               <div class="flex flex-col items-center justify-center space-y-3">
+                  <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <SearchIcon class="w-6 h-6" />
+                  </div>
+                  <p>Tidak ada sesi yang dipadankan dengan pencarian.</p>
+               </div>
+             </TableCell>
           </TableRow>
         </TableBody>
       </Table>
+      
+      <div v-if="filteredSessions.length > 0" class="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-slate-50/30">
+        <div>Showing <strong>1</strong> to <strong>{{ filteredSessions.length }}</strong> of <strong>{{ filteredSessions.length }}</strong> results</div>
+        <div class="flex gap-2">
+           <Button variant="outline" size="sm" class="h-8 border-slate-200 text-slate-600" disabled>Previous</Button>
+           <Button variant="outline" size="sm" class="h-8 border-slate-200 text-slate-600" disabled>Next</Button>
+        </div>
+      </div>
     </Card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SearchIcon, PlusIcon, FilterIcon, CalendarDaysIcon, EyeIcon, Edit2Icon } from 'lucide-vue-next'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const router = useRouter()
 const sessionStore = useSessionStore()
+
+const searchQuery = ref('')
+const statusFilter = ref('all')
 
 onMounted(async () => {
   await sessionStore.fetchSessions()
 })
 
-const getStatus = (session: any) => {
-  if (session.is_locked) return 'Terkunci'
+const filteredSessions = computed(() => {
+  return sessionStore.sessions.filter((s: any) => {
+    const matchesSearch = s.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    if (!matchesSearch) return false
+    
+    if (statusFilter.value !== 'all') {
+      const status = getStatusText(s).toLowerCase()
+      if (status !== statusFilter.value) return false
+    }
+    
+    return true
+  })
+})
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  statusFilter.value = 'all'
+}
+
+const getEndDate = (session: any) => {
+  const start = new Date(session.schedule)
+  return new Date(start.getTime() + session.duration_minutes * 60000).toISOString()
+}
+
+const formatDateMonthDay = (dateString: string) => {
+  const d = new Date(dateString)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const formatTime = (dateString: string) => {
+  const d = new Date(dateString)
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+const getSessionCodeFromName = (name: string) => {
+  const words = name.split(' ')
+  let code = words.map(w => w.charAt(0).toUpperCase()).join('')
+  return `${code}-2024`
+}
+
+const getStatusText = (session: any) => {
+  if (session.is_locked) return 'Locked'
   const now = new Date()
   const start = new Date(session.schedule)
   const end = new Date(start.getTime() + session.duration_minutes * 60000)
-  if (now < start) return 'Akan Datang'
-  if (now > end) return 'Berakhir'
-  return 'Berjalan'
+  if (now < start) return 'Scheduled'
+  if (now > end) return 'Completed'
+  return 'Active'
 }
 
-const getStatusVariant = (session: any) => {
-  if (session.is_locked) return 'destructive'
-  const stat = getStatus(session)
-  if (stat === 'Berjalan') return 'default'
-  if (stat === 'Akan Datang') return 'secondary'
-  return 'outline'
+const getStatusBadgeClass = (status: string) => {
+  if (status === 'Active') return 'bg-green-100 text-green-700 hover:bg-green-100'
+  if (status === 'Scheduled') return 'bg-blue-100 text-blue-700 hover:bg-blue-100'
+  if (status === 'Completed') return 'bg-slate-100 text-slate-700 hover:bg-slate-100'
+  return 'bg-red-100 text-red-700 hover:bg-red-100'
+}
+
+const getStatusDotClass = (status: string) => {
+  if (status === 'Active') return 'bg-green-500'
+  if (status === 'Scheduled') return 'bg-blue-500'
+  if (status === 'Completed') return 'bg-slate-500'
+  return 'bg-red-500'
 }
 </script>

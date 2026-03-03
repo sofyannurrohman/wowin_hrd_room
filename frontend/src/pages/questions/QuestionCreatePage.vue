@@ -12,7 +12,7 @@
         <form @submit.prevent="submit" class="space-y-6">
           <div class="space-y-2">
             <Label for="type">Tipe Soal</Label>
-            <select v-model="form.type" id="type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+            <select v-model="form.type" id="type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
               <option value="multiple_choice">Pilihan Ganda</option>
               <option value="true_false">Benar / Salah</option>
               <option value="short_answer">Isian Singkat</option>
@@ -22,7 +22,7 @@
 
           <div class="space-y-2">
             <Label for="content">Pertanyaan</Label>
-            <textarea id="content" v-model="form.content" class="w-full p-3 border rounded-md min-h-[100px] outline-none focus:ring-2 focus:ring-primary" required></textarea>
+            <Textarea id="content" v-model="form.content" class="min-h-[100px]" required />
           </div>
 
           <div class="space-y-2">
@@ -31,10 +31,10 @@
           </div>
 
           <div class="space-y-2">
-            <Label>Lampirkan ke Sesi Ujian (Opsional)</Label>
-            <select v-model="form.session_id" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <Label>Lampirkan ke Modul Soal (Opsional)</Label>
+            <select v-model="form.module_id" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <option :value="''">-- Jadikan Bank Soal Global --</option>
-              <option v-for="s in sessionStore.sessions" :key="s.id" :value="s.id">{{ s.title }}</option>
+              <option v-for="m in modules" :key="m.id" :value="m.id">{{ m.name }}</option>
             </select>
           </div>
 
@@ -89,23 +89,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useSessionStore } from '@/stores/session'
 import client from '@/api/client'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ArrowLeftIcon, TrashIcon } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 
 const router = useRouter()
-const sessionStore = useSessionStore()
+const modules = ref<any[]>([])
 
 const loading = ref(false)
 
 const form = ref({
-  session_id: '',
+  module_id: '',
   content: '',
   type: 'multiple_choice',
 })
@@ -123,7 +123,12 @@ const correctBoolAnswer = ref<string>('true')
 const correctTextAnswer = ref('')
 
 onMounted(async () => {
-    await sessionStore.fetchSessions()
+    try {
+      const res = await client.get('/modules')
+      modules.value = res.data.modules || []
+    } catch(e) {
+      toast.error('Gagal memuat daftar modul')
+    }
 })
 
 const onFileChange = (e: Event) => {
@@ -145,7 +150,7 @@ const submit = async () => {
     const formData = new FormData()
     formData.append('content', form.value.content)
     formData.append('type', form.value.type)
-    if (form.value.session_id) formData.append('session_id', form.value.session_id)
+    if (form.value.module_id) formData.append('module_id', form.value.module_id)
     if (fileObj.value) formData.append('image', fileObj.value)
 
     // Append options as JSON string based on type
@@ -153,16 +158,16 @@ const submit = async () => {
 
     if (form.value.type === 'multiple_choice') {
       finalOptions = options.value.map((o, idx) => ({
-        text: o.text,
+        content: o.text,
         is_correct: correctOptionIndex.value === idx
       }))
     } else if (form.value.type === 'true_false') {
       finalOptions = [
-        { text: 'Benar', is_correct: correctBoolAnswer.value === 'true' },
-        { text: 'Salah', is_correct: correctBoolAnswer.value === 'false' }
+        { content: 'Benar', is_correct: correctBoolAnswer.value === 'true' },
+        { content: 'Salah', is_correct: correctBoolAnswer.value === 'false' }
       ]
     } else if (form.value.type === 'short_answer') {
-      finalOptions = [{ text: correctTextAnswer.value, is_correct: true }] // Convention for short answer
+      finalOptions = [{ content: correctTextAnswer.value, is_correct: true }] // Convention for short answer
     }
     // essay has no fixed options
 

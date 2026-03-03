@@ -2,6 +2,7 @@
   <div class="min-h-screen bg-muted/30 flex items-center justify-center p-4">
     <Card class="w-full max-w-md">
       <CardHeader class="space-y-1 text-center">
+        <img :src="viteLogo" alt="Logo" class="mx-auto w-32 h-32" />
         <CardTitle class="text-2xl">Wowin HRD Room</CardTitle>
         <CardDescription>Gunakan Akun HR untuk login ke sistem</CardDescription>
       </CardHeader>
@@ -36,6 +37,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import viteLogo from '@/assets/vite.svg'
 
 const router = useRouter()
 const authStore = useAuthStore()

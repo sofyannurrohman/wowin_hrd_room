@@ -72,6 +72,26 @@ const router = createRouter({
           component: () => import('../pages/dashboard/SessionResultsPage.vue')
         },
         {
+          path: '/participants',
+          name: 'participantsList',
+          component: () => import('../pages/dashboard/ParticipantsPage.vue')
+        },
+        {
+          path: '/modules',
+          name: 'modulesList',
+          component: () => import('../pages/modules/ModulesPage.vue')
+        },
+        {
+          path: '/modules/create',
+          name: 'moduleCreate',
+          component: () => import('../pages/modules/ModuleCreatePage.vue')
+        },
+        {
+          path: '/modules/edit/:id',
+          name: 'moduleEdit',
+          component: () => import('../pages/modules/ModuleEditPage.vue')
+        },
+        {
           path: '/questions',
           name: 'questionsList',
           component: () => import('../pages/questions/QuestionsPage.vue')
@@ -85,6 +105,21 @@ const router = createRouter({
           path: '/questions/edit/:id',
           name: 'questionsEdit',
           component: () => import('../pages/questions/QuestionEditPage.vue')
+        },
+        {
+          path: '/job-positions',
+          name: 'jobPositionsList',
+          component: () => import('../pages/job_positions/JobPositionsPage.vue')
+        },
+        {
+          path: '/job-positions/create',
+          name: 'jobPositionsCreate',
+          component: () => import('../pages/job_positions/JobPositionCreatePage.vue')
+        },
+        {
+          path: '/job-positions/edit/:id',
+          name: 'jobPositionsEdit',
+          component: () => import('../pages/job_positions/JobPositionEditPage.vue')
         },
         {
           path: '/admin/users',

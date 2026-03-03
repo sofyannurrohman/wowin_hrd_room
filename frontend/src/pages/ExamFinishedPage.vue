@@ -1,12 +1,12 @@
 <template>
-  <div class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-    <Card class="w-full max-w-lg text-center shadow-lg border-t-4 border-t-green-500">
+  <div class="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+    <Card class="w-full max-w-lg text-center shadow-lg border-t-4 border-t-primary">
       <CardContent class="pt-10 pb-8 space-y-6 flex flex-col items-center">
-        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-          <CheckCircle2Icon class="w-10 h-10 text-green-600" />
+        <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+          <CheckCircle2Icon class="w-10 h-10 text-primary" />
         </div>
-        <h2 class="text-3xl font-bold text-slate-800">Ujian Selesai!</h2>
-        <p class="text-slate-500 max-w-sm">
+        <h2 class="text-3xl font-bold text-foreground">Ujian Selesai!</h2>
+        <p class="text-muted-foreground max-w-sm">
           Jawaban Anda telah berhasil dikirimkan dan tersimpan di sistem kami. Anda dapat menutup halaman ini sekarang.
         </p>
         <Button variant="outline" class="w-full mt-6" @click="backHome">Kembali ke Halaman Awal</Button>

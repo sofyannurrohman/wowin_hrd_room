@@ -22,7 +22,7 @@
         </TableHeader>
         <TableBody>
           <TableRow v-for="log in logs" :key="log.id" class="text-sm">
-            <TableCell class="text-slate-500 whitespace-nowrap">{{ new Date(log.created_at).toLocaleString() }}</TableCell>
+            <TableCell class="text-muted-foreground whitespace-nowrap">{{ new Date(log.created_at).toLocaleString() }}</TableCell>
             <TableCell>
               <Badge variant="outline">{{ log.action.toUpperCase() }}</Badge>
             </TableCell>
@@ -30,7 +30,7 @@
             <TableCell class="font-mono text-xs">{{ log.user_name || log.user_id || 'System' }}</TableCell>
           </TableRow>
           <TableRow v-if="logs.length === 0">
-             <TableCell colspan="5" class="text-center h-24 text-slate-500">Memuat log sistem...</TableCell>
+             <TableCell colspan="5" class="text-center h-24 text-muted-foreground">Memuat log sistem...</TableCell>
           </TableRow>
         </TableBody>
       </Table>
