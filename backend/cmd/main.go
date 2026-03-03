@@ -72,10 +72,10 @@ func main() {
 
 	// Handlers
 	authH := handlers.NewAuthHandler(authUC, jwtManager)
-	sessionH := handlers.NewSessionHandler(sessionUC, uploadDir)
+	sessionH := handlers.NewSessionHandler(sessionUC, hub, uploadDir)
 	moduleH := handlers.NewModuleHandler(moduleUC)
 	jobPositionH := handlers.NewJobPositionHandler(jobPositionUC)
-	examH := handlers.NewExamHandler(examUC, sessionUC, questionRepo, violationRepo, uploadDir)
+	examH := handlers.NewExamHandler(examUC, sessionUC, questionRepo, violationRepo, hub, uploadDir)
 	questionH := handlers.NewQuestionHTTPHandler(questionRepo, uploadDir)
 	adminH := handlers.NewAdminHandler(userRepo, logRepo)
 	dashboardH := handlers.NewDashboardHandler(dashboardRepo)
@@ -115,9 +115,15 @@ func main() {
 			auth.POST("/register", authH.Register)
 		}
 
-		// Public exam endpoints
+		// Public exam endpoints (participants have no JWT, identified by participant_id)
 		api.POST("/exam/join", examH.Join)
+		api.GET("/exam/:sessionId/modules", examH.GetModules)
+		api.GET("/exam/:sessionId/modules/:moduleId/questions", examH.GetQuestionsForModule)
+		api.POST("/exam/:sessionId/answers", examH.SubmitAnswers)
+		api.POST("/violations", examH.ReportViolation)
 		api.GET("/job-positions/active", jobPositionH.ListActive)
+		// WebSocket (no JWT auth, uses query params for role/participant)
+		api.GET("/ws/:sessionId", wsH.Handle)
 	}
 
 	// ─── Authenticated Routes ─────────────────────────────────────────────────
@@ -126,15 +132,6 @@ func main() {
 	{
 		// Current user
 		authAPI.GET("auth/me", authH.Me)
-
-		// Exam (participants)
-		authAPI.GET("exam/:sessionId/modules", examH.GetModules)
-		authAPI.GET("exam/:sessionId/modules/:moduleId/questions", examH.GetQuestionsForModule)
-		authAPI.POST("exam/:sessionId/answers", examH.SubmitAnswers)
-		authAPI.POST("violations", examH.ReportViolation)
-
-		// WebSocket
-		authAPI.GET("ws/:sessionId", wsH.Handle)
 
 		// ─── HR / Admin Routes ────────────────────────────────────────────────
 		hrRoutes := authAPI.Group("/")
@@ -149,6 +146,7 @@ func main() {
 			hrRoutes.POST("sessions", sessionH.Create)
 			hrRoutes.GET("sessions/:id", sessionH.GetByID)
 			hrRoutes.PUT("sessions/:id", sessionH.Update)
+			hrRoutes.PUT("sessions/:id/lock", sessionH.Lock)
 			hrRoutes.DELETE("sessions/:id", sessionH.Delete)
 
 			// Tokens

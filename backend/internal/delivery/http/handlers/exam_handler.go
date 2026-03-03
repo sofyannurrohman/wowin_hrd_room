@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	ws "hrd_room/backend/internal/delivery/websocket"
 	"hrd_room/backend/internal/domain"
 	"hrd_room/backend/internal/repository"
 	"hrd_room/backend/internal/usecase"
@@ -22,14 +23,12 @@ type ExamHandler struct {
 	sessionUC *usecase.SessionUseCase
 	qRepo     *repository.QuestionRepository
 	vRepo     *repository.ViolationRepository
-	wsHub     interface {
-		BroadcastToSession(sessionID string, msg interface{})
-	}
+	wsHub     *ws.Hub
 	uploadDir string
 }
 
-func NewExamHandler(examUC *usecase.ExamUseCase, sessionUC *usecase.SessionUseCase, qRepo *repository.QuestionRepository, vRepo *repository.ViolationRepository, uploadDir string) *ExamHandler {
-	return &ExamHandler{examUC: examUC, sessionUC: sessionUC, qRepo: qRepo, vRepo: vRepo, uploadDir: uploadDir}
+func NewExamHandler(examUC *usecase.ExamUseCase, sessionUC *usecase.SessionUseCase, qRepo *repository.QuestionRepository, vRepo *repository.ViolationRepository, hub *ws.Hub, uploadDir string) *ExamHandler {
+	return &ExamHandler{examUC: examUC, sessionUC: sessionUC, qRepo: qRepo, vRepo: vRepo, wsHub: hub, uploadDir: uploadDir}
 }
 
 // POST /api/exam/join
@@ -58,11 +57,30 @@ func (h *ExamHandler) Join(c *gin.Context) {
 		return
 	}
 
+	// Compute remaining time until session end for timer initialization
+	endTime := session.Schedule.Add(time.Duration(session.DurationMinutes) * time.Minute)
+	remaining := int(endTime.Sub(time.Now()).Seconds())
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	// Notify HR dashboards that a participant has joined
+	if h.wsHub != nil {
+		h.wsHub.BroadcastToSession(session.ID.String(), ws.Message{
+			Type:          ws.MsgTypeParticipantJoin,
+			SessionID:     session.ID.String(),
+			ParticipantID: participant.ID.String(),
+			UserName:      req.Name,
+			Timestamp:     time.Now(),
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"participant_id": participant.ID,
 		"session_id":     session.ID,
 		"session_name":   session.Name,
 		"duration":       session.DurationMinutes,
+		"time_remaining": remaining,
 	})
 }
 
@@ -78,6 +96,9 @@ func (h *ExamHandler) GetModules(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	if modules == nil {
+		modules = []domain.Module{}
 	}
 	c.JSON(http.StatusOK, modules)
 }
@@ -233,6 +254,22 @@ func (h *ExamHandler) ReportViolation(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Broadcast violation event to HR dashboards over WebSocket
+	if h.wsHub != nil {
+		payload, _ := json.Marshal(map[string]string{
+			"violation_type": req.ViolationType,
+			"participant_id": req.ParticipantID,
+		})
+		h.wsHub.BroadcastToSession(req.SessionID, ws.Message{
+			Type:          ws.MsgTypeViolation,
+			SessionID:     req.SessionID,
+			ParticipantID: req.ParticipantID,
+			Data:          payload,
+			Timestamp:     time.Now(),
+		})
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"id": v.ID, "message": "pelanggaran dicatat"})
 }
 

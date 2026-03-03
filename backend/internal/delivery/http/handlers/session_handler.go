@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	ws "hrd_room/backend/internal/delivery/websocket"
 	"hrd_room/backend/internal/usecase"
 
 	"github.com/gin-gonic/gin"
@@ -14,11 +15,12 @@ import (
 
 type SessionHandler struct {
 	sessionUC *usecase.SessionUseCase
+	wsHub     *ws.Hub
 	uploadDir string
 }
 
-func NewSessionHandler(sessionUC *usecase.SessionUseCase, uploadDir string) *SessionHandler {
-	return &SessionHandler{sessionUC: sessionUC, uploadDir: uploadDir}
+func NewSessionHandler(sessionUC *usecase.SessionUseCase, hub *ws.Hub, uploadDir string) *SessionHandler {
+	return &SessionHandler{sessionUC: sessionUC, wsHub: hub, uploadDir: uploadDir}
 }
 
 func (h *SessionHandler) Create(c *gin.Context) {
@@ -98,6 +100,39 @@ func (h *SessionHandler) Delete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "session deleted"})
+}
+
+// PUT /api/sessions/:id/lock
+func (h *SessionHandler) Lock(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		return
+	}
+
+	var req struct {
+		Locked bool `json:"locked"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.sessionUC.Lock(c.Request.Context(), id, req.Locked); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Broadcast session_end message to all clients when locking the session
+	if req.Locked && h.wsHub != nil {
+		h.wsHub.BroadcastToSessionAll(id.String(), ws.Message{
+			Type:      ws.MsgTypeSessionEnd,
+			SessionID: id.String(),
+			Timestamp: time.Now(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "session updated"})
 }
 
 func (h *SessionHandler) GenerateTokens(c *gin.Context) {

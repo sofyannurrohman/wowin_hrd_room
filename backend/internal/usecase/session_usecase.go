@@ -110,6 +110,10 @@ func (uc *SessionUseCase) Delete(ctx context.Context, id uuid.UUID) error {
 	return uc.sessionRepo.Delete(ctx, id)
 }
 
+func (uc *SessionUseCase) Lock(ctx context.Context, id uuid.UUID, locked bool) error {
+	return uc.sessionRepo.Lock(ctx, id, locked)
+}
+
 // Token generation
 
 type GenerateTokenRequest struct {

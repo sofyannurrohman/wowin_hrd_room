@@ -17,6 +17,7 @@ const (
 	MsgTypeParticipantLeave  = "participant_leave"
 	MsgTypeParticipantFinish = "participant_finish"
 	MsgTypeSessionEnd        = "session_end"
+	MsgTypeCameraFrame       = "camera_frame"
 )
 
 type Message struct {
@@ -92,6 +93,21 @@ func (h *Hub) BroadcastToSession(sessionID string, msg Message) {
 	}
 }
 
+// BroadcastToSessionAll sends message to all clients (HR and participants)
+func (h *Hub) BroadcastToSessionAll(sessionID string, msg Message) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	data, _ := json.Marshal(msg)
+	for client := range h.sessions[sessionID] {
+		select {
+		case client.send <- data:
+		default:
+			// drop if buffer full
+		}
+	}
+}
+
 // NotifyParticipant sends a message to a specific participant
 func (h *Hub) NotifyParticipant(sessionID, participantID string, msg Message) {
 	h.mu.RLock()
@@ -146,7 +162,7 @@ func (c *Client) readPump(h *Hub) {
 		c.conn.Close()
 	}()
 
-	c.conn.SetReadLimit(4096)
+	c.conn.SetReadLimit(512 * 1024) // 512 KB — large enough for base64 JPEG camera frames
 	c.conn.SetReadDeadline(time.Now().Add(120 * time.Second))
 	c.conn.SetPongHandler(func(string) error {
 		c.conn.SetReadDeadline(time.Now().Add(120 * time.Second))

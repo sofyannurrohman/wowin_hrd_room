@@ -17,14 +17,19 @@
       <div class="flex items-center gap-8">
         <div class="text-right">
            <p class="text-[10px] text-blue-200 font-bold uppercase tracking-widest mb-0.5">Time Remaining</p>
-           <p class="text-2xl font-black leading-none tracking-widest">45 : 00</p>
+           <p class="text-2xl font-black leading-none tracking-widest">{{ formattedTimeRemaining }}</p>
         </div>
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-400/30 bg-[#253f86] text-sm font-semibold">
             <div class="w-2 h-2 rounded-full" :class="isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-500'"></div>
             Live Monitoring
           </div>
-          <Button variant="destructive" class="bg-red-600 hover:bg-red-700 font-bold tracking-wide rounded-lg flex items-center gap-2">
+          <Button
+            variant="destructive"
+            class="bg-red-600 hover:bg-red-700 font-bold tracking-wide rounded-lg flex items-center gap-2"
+            @click="endSession"
+            :disabled="endingSession"
+          >
             <StopCircleIcon class="w-4 h-4" /> End Session
           </Button>
         </div>
@@ -49,15 +54,31 @@
           
           <Card v-for="(p, pid) in participantsStatus" :key="pid" class="overflow-hidden border border-slate-200 shadow-sm rounded-xl flex flex-col group transition-all hover:shadow-md hover:border-blue-200 cursor-pointer relative" :class="getCardBorderClass(p.status)">
             
-            <!-- Video Placeholder -->
-            <div class="h-32 bg-slate-800 relative w-full overflow-hidden flex items-center justify-center">
-               <img :src="`https://api.dicebear.com/7.x/initials/svg?seed=${p.name}&backgroundColor=0f172a&textColor=ffffff`" class="w-full h-full object-cover opacity-60 mix-blend-overlay" />
+            <!-- Video Feed: live frame when streaming, avatar fallback otherwise -->
+            <div class="h-36 bg-slate-900 relative w-full overflow-hidden flex items-center justify-center">
+               <!-- Live camera frame -->
+               <img
+                 v-if="participantFrames[pid]"
+                 :src="participantFrames[pid]"
+                 class="w-full h-full object-cover"
+                 :alt="p.name"
+               />
+               <!-- Fallback avatar -->
+               <img
+                 v-else
+                 :src="`https://api.dicebear.com/7.x/initials/svg?seed=${p.name}&backgroundColor=0f172a&textColor=ffffff`"
+                 class="w-16 h-16 rounded-full opacity-50"
+               />
                <div class="absolute inset-x-2 top-2 flex justify-between items-start">
                   <div class="p-1.5 bg-black/50 rounded-md text-white backdrop-blur-sm">
                     <MicOffIcon class="w-3.5 h-3.5" v-if="Math.random() > 0.5" />
                     <MicIcon class="w-3.5 h-3.5" v-else />
                   </div>
-                  <Badge :class="getWebcamBadgeStyle(p.status)" class="font-bold text-[10px] px-2 py-0.5 rounded-md border-0 uppercase flex items-center gap-1 backdrop-blur-md shadow-sm">
+                  <!-- Live pulsing badge when streaming -->
+                  <div v-if="participantFrames[pid]" class="flex items-center gap-1 bg-red-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-sm">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> LIVE
+                  </div>
+                  <Badge v-else :class="getWebcamBadgeStyle(p.status)" class="font-bold text-[10px] px-2 py-0.5 rounded-md border-0 uppercase flex items-center gap-1 backdrop-blur-md shadow-sm">
                      <component :is="getWebcamBadgeIcon(p.status)" class="w-3 h-3" />
                      {{ getWebcamStatusText(p.status) }}
                   </Badge>
@@ -165,11 +186,23 @@ const sessionTitle = ref('Loading Session...')
 const sessionParticipantsCount = ref(0)
 const onlineParticipants = ref<any[]>([])
 
+// Timer based on real session schedule
+const timeRemaining = ref(0)
+let timerInterval: number | null = null
+
 // Init WebSocket connection
-const { isConnected, participantsStatus, recentViolations } = useWebSocket(sessionId)
+const { isConnected, participantsStatus, recentViolations, participantFrames } = useWebSocket(sessionId)
 
 const onlineCount = computed(() => {
   return Object.values(participantsStatus.value).filter(p => p.status === 'online').length
+})
+
+const formattedTimeRemaining = computed(() => {
+  const total = Math.max(timeRemaining.value, 0)
+  const h = Math.floor(total / 3600).toString().padStart(2, '0')
+  const m = Math.floor((total % 3600) / 60).toString().padStart(2, '0')
+  const s = (total % 60).toString().padStart(2, '0')
+  return `${h} : ${m} : ${s}`
 })
 
 onMounted(async () => {
@@ -177,19 +210,27 @@ onMounted(async () => {
     const s = await client.get(`/sessions/${sessionId}`)
     sessionTitle.value = s.data.name
     sessionParticipantsCount.value = s.data.max_participants
-    
+
+    // Compute remaining time from schedule + duration
+    const schedule = new Date(s.data.schedule)
+    const endTime = new Date(schedule.getTime() + s.data.duration_minutes * 60000)
+    timeRemaining.value = Math.max(Math.floor((endTime.getTime() - Date.now()) / 1000), 0)
+
+    if (timerInterval) clearInterval(timerInterval)
+    timerInterval = window.setInterval(() => {
+      if (timeRemaining.value > 0) timeRemaining.value--
+    }, 1000)
+
     const p = await client.get(`/sessions/${sessionId}/participants`)
     onlineParticipants.value = p.data || []
-    
+
+    // Seed participantsStatus from DB (status stays as-is — only WS joins set 'online')
     onlineParticipants.value.forEach((part: any) => {
       if (!participantsStatus.value[part.id]) {
-        // Mocking some statuses for the UI demonstration based on the mockup
-        let mockStatus = 'online'
-        if (Math.random() > 0.8) mockStatus = 'multiple_face'
-        else if (Math.random() > 0.8) mockStatus = 'no_face'
-        else if (Math.random() > 0.9) mockStatus = 'tab_switch'
-
-        participantsStatus.value[part.id] = { name: part.user?.name || 'Unknown', status: mockStatus }
+        participantsStatus.value[part.id] = {
+          name: part.user_name || part.user_email || 'Unknown',
+          status: part.status || 'active',
+        }
       }
     })
   } catch (e) {
@@ -201,6 +242,21 @@ const getCardBorderClass = (status: string) => {
   if (status === 'multiple_face') return 'border-red-500 shadow-[0_0_0_1px_rgba(239,68,68,1)]'
   if (status === 'no_face' || status === 'tab_switch') return 'border-orange-500 shadow-[0_0_0_1px_rgba(249,115,22,1)]'
   return ''
+}
+
+const endingSession = ref(false)
+const endSession = async () => {
+  if (endingSession.value) return
+  if (!confirm('Akhiri sesi ujian ini? Peserta tidak akan dapat melanjutkan ujian.')) return
+
+  endingSession.value = true
+  try {
+    await client.put(`/sessions/${sessionId}/lock`, { locked: true })
+  } catch (e) {
+    console.error('Failed to end session', e)
+  } finally {
+    endingSession.value = false
+  }
 }
 
 const getWebcamBadgeStyle = (status: string) => {
