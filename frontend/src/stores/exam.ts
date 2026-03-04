@@ -11,15 +11,20 @@ export interface ModuleGroup {
 export const useExamStore = defineStore('exam', {
   state: () => ({
     participantId: localStorage.getItem('participantId') || null,
-    sessionId: null as string | null,
+    sessionId: localStorage.getItem('examSessionId') || null,
     sessionName: localStorage.getItem('sessionName') || '',
     modules: [] as any[],
-    moduleGroups: [] as ModuleGroup[],   // one entry per module
+    moduleGroups: [] as ModuleGroup[],
     currentModuleIndex: 0,
-    allQuestions: [] as any[],           // all questions across all modules, flat
-    questions: [] as any[],              // questions for the CURRENT module only
+    allQuestions: [] as any[],
+    questions: [] as any[],
     answers: {} as Record<string, any>,
-    timeRemaining: 0,
+    // Restore timeRemaining from the persisted end timestamp so reload doesn't trigger auto-submit
+    timeRemaining: (() => {
+      const end = Number(localStorage.getItem('examEndTimestamp') || 0)
+      if (!end) return 0
+      return Math.max(0, Math.floor((end - Date.now()) / 1000))
+    })(),
     isSubmitting: false,
   }),
   actions: {
@@ -30,8 +35,12 @@ export const useExamStore = defineStore('exam', {
       this.sessionName = res.data.session_name || ''
       const durationSeconds = (res.data.time_remaining ?? (res.data.duration * 60)) || 0
       this.timeRemaining = durationSeconds
+      // Persist end timestamp so timer survives page reload
+      const endTs = Date.now() + durationSeconds * 1000
       localStorage.setItem('participantId', res.data.participant_id)
+      localStorage.setItem('examSessionId', res.data.session_id)
       localStorage.setItem('sessionName', this.sessionName)
+      localStorage.setItem('examEndTimestamp', String(endTs))
       return res.data
     },
 
@@ -149,8 +158,11 @@ export const useExamStore = defineStore('exam', {
       this.allQuestions = []
       this.questions = []
       this.answers = {}
+      this.timeRemaining = 0
       localStorage.removeItem('participantId')
+      localStorage.removeItem('examSessionId')
       localStorage.removeItem('sessionName')
+      localStorage.removeItem('examEndTimestamp')
     }
   }
 })

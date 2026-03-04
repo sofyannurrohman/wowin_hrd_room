@@ -331,7 +331,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useExamStore } from '@/stores/exam'
 import { useCamera } from '@/composables/useCamera'
 import { useAntiCheat } from '@/composables/useAntiCheat'
@@ -445,7 +445,7 @@ const videoRef = ref<HTMLVideoElement | null>(null)
 const captureCanvas = ref<HTMLCanvasElement | null>(null)
 const { startCamera, stopCamera } = useCamera()
 const { faceStatus, initFaceDetection, startDetection, stopDetection, setupBrowserAntiCheat, removeBrowserAntiCheat } = useAntiCheat()
-const { sessionEnded, sendCameraFrame } = useWebSocket(sessionId, examStore.participantId || undefined)
+const { sessionEnded, sendCameraFrame, sendParticipantFinish } = useWebSocket(sessionId, examStore.participantId || undefined)
 
 let frameCaptureInterval: number | null = null
 
@@ -456,8 +456,7 @@ const captureAndSendFrame = () => {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.5)
-  sendCameraFrame(dataUrl)
+  sendCameraFrame(canvas.toDataURL('image/jpeg', 0.5))
 }
 
 const statusBorderClass = computed(() => {
@@ -477,6 +476,24 @@ const formattedTime = computed(() => {
 })
 const isTimeLow = computed(() => timeRemaining.value < 300)
 
+// ─── Navigation Guards ───────────────────────────────────────────
+// Warn participants when they try to close / reload the browser tab
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (examStore.isSubmitting) return
+  e.preventDefault()
+  e.returnValue = ''
+}
+window.addEventListener('beforeunload', handleBeforeUnload)
+
+// Warn participants when they try to navigate away within the SPA
+onBeforeRouteLeave((_to, _from) => {
+  if (examStore.isSubmitting) return true
+  const confirmed = window.confirm(
+    'Anda yakin ingin keluar dari halaman ujian? Progres jawaban Anda sudah tersimpan otomatis.'
+  )
+  return confirmed
+})
+
 // ─── Lifecycle ───────────────────────────────────────────────────
 onMounted(async () => {
   if (!examStore.participantId || !examStore.sessionId || examStore.sessionId !== sessionId) {
@@ -484,27 +501,40 @@ onMounted(async () => {
     return
   }
 
+  // Sync timer from store (which restores from localStorage on page reload)
+  timeRemaining.value = examStore.timeRemaining
+
   await examStore.fetchModulesAndStart()
 
   if (videoRef.value) {
     await startCamera(videoRef.value)
     await initFaceDetection(videoRef.value)
     startDetection()
-    // Start sending camera frames to HR every 5 seconds
     frameCaptureInterval = window.setInterval(captureAndSendFrame, 5000)
   }
 
   setupBrowserAntiCheat()
 
-  timerInterval = window.setInterval(() => {
-    if (timeRemaining.value > 0) {
-      timeRemaining.value--
-    } else {
-      clearInterval(timerInterval!)
-      toast.error('Waktu habis! Jawaban otomatis dikirim.')
-      doSubmit()
+  // Only start countdown if there is actually time remaining (avoids instant submit on reload)
+  if (timeRemaining.value > 0) {
+    timerInterval = window.setInterval(() => {
+      if (timeRemaining.value > 0) {
+        timeRemaining.value--
+      } else {
+        clearInterval(timerInterval!)
+        toast.error('Waktu habis! Jawaban otomatis dikirim.')
+        doSubmit()
+      }
+    }, 1000)
+  } else if (timeRemaining.value === 0) {
+    // Only auto-submit if an end timestamp was actually set and it's genuinely expired
+    const storedEnd = Number(localStorage.getItem('examEndTimestamp') || 0)
+    if (storedEnd && storedEnd < Date.now()) {
+      toast.error('Waktu ujian telah habis.')
+      await doSubmit()
     }
-  }, 1000)
+    // Otherwise: first join without timestamp yet — just wait for timer to be set normally
+  }
 })
 
 onUnmounted(() => {
@@ -513,6 +543,7 @@ onUnmounted(() => {
   removeBrowserAntiCheat()
   if (timerInterval) clearInterval(timerInterval)
   if (frameCaptureInterval) clearInterval(frameCaptureInterval)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
 // ─── Actions ──────────────────────────────────────────────────────
@@ -541,6 +572,10 @@ const startNextModule = () => {
 
 const doSubmit = async () => {
   showSubmitDialog.value = false
+  // Notify HR immediately that this participant has finished
+  sendParticipantFinish()
+  // Stop frame capture before submitting
+  if (frameCaptureInterval) { clearInterval(frameCaptureInterval); frameCaptureInterval = null }
   const success = await examStore.submitExam()
   if (success) {
     router.push('/exam-finished')

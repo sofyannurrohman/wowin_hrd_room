@@ -84,9 +84,13 @@ func (h *ExamHandler) Join(c *gin.Context) {
 	})
 }
 
-// GET /api/exam/:sessionId/modules
+// GET /api/exam/:sessionId/modules & /api/sessions/:id/modules
 func (h *ExamHandler) GetModules(c *gin.Context) {
-	sessionID, err := uuid.Parse(c.Param("sessionId"))
+	sessionIDStr := c.Param("sessionId")
+	if sessionIDStr == "" {
+		sessionIDStr = c.Param("id")
+	}
+	sessionID, err := uuid.Parse(sessionIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
 		return
@@ -151,6 +155,45 @@ func (h *ExamHandler) SubmitAnswers(c *gin.Context) {
 		"result_id":      result.ID,
 		"grading_status": result.GradingStatus,
 	})
+}
+
+// POST /api/exam/:sessionId/answers/autosave
+func (h *ExamHandler) AutoSaveAnswers(c *gin.Context) {
+	var req usecase.SubmitRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	participantID, err := uuid.Parse(req.ParticipantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid participant_id"})
+		return
+	}
+
+	if err := h.examUC.SaveAnswers(c.Request.Context(), participantID, req.Answers); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "jawaban berhasil disimpan otomatis",
+	})
+}
+
+// GET /api/exam/answers/:participantId
+func (h *ExamHandler) GetParticipantAnswersPublic(c *gin.Context) {
+	participantID, err := uuid.Parse(c.Param("participantId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid participant id"})
+		return
+	}
+	answers, err := h.examUC.GetParticipantAnswers(c.Request.Context(), participantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, answers)
 }
 
 // GET /api/sessions/:id/results

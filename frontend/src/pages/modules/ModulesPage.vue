@@ -9,7 +9,7 @@
         to="/modules/create"
         class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors bg-blue-600 text-white rounded-lg hover:bg-blue-700"
       >
-        <PlusIcon class="w-4 h-4" /> Create Module
+        <PlusIcon class="w-4 h-4" /> Buat Module Baru
       </RouterLink>
     </div>
 
@@ -23,10 +23,10 @@
         <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
           <LayersIcon class="w-8 h-8" />
         </div>
-        <h3 class="text-lg font-medium text-slate-900 mb-1">No Modules Yet</h3>
-        <p class="text-slate-500 max-w-sm">Get started by creating your first question module to organize your exam questions.</p>
+        <h3 class="text-lg font-medium text-slate-900 mb-1">Belum ada modul</h3>
+        <p class="text-slate-500 max-w-sm">Mulai buat modul soal untuk mengelompokan soal ujian.</p>
         <RouterLink to="/modules/create" class="mt-6 text-blue-600 font-medium hover:underline text-sm">
-          Create new module
+          Buat Modul Baru
         </RouterLink>
       </div>
 

@@ -85,13 +85,6 @@
             Manajemen Users
           </RouterLink>
           
-          <a
-            href="#"
-            class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-blue-100 hover:bg-white/10 hover:text-white transition-colors group"
-          >
-             <BarChart2Icon class="w-5 h-5 opacity-80 group-hover:opacity-100" />
-             Results & Analytics
-          </a>
         </div>
 
         <!-- System -->

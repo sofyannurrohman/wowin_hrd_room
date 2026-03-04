@@ -5,8 +5,8 @@
         <ArrowLeftIcon class="w-5 h-5" />
       </router-link>
       <div>
-        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Create New Module</h1>
-        <p class="text-sm text-slate-500 mt-1">Add a new question bank module</p>
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Buat Modul Baru</h1>
+        <p class="text-sm text-slate-500 mt-1">Tambah bank soal kedalam modul </p>
       </div>
     </div>
 
@@ -16,7 +16,7 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">
-              Module Name <span class="text-red-500">*</span>
+              Nama Modul <span class="text-red-500">*</span>
             </label>
             <input
               v-model="form.name"
@@ -28,7 +28,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
             <textarea
               v-model="form.description"
               rows="4"

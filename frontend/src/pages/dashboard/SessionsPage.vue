@@ -3,7 +3,7 @@
     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <div>
         <h2 class="text-3xl font-extrabold tracking-tight text-slate-800">Sessions Management</h2>
-        <p class="text-slate-500 mt-1">Manage and monitor your assessment sessions.</p>
+        <p class="text-slate-500 mt-1">Manage and monitor sesi ujian.</p>
       </div>
       <div class="flex items-center gap-3 w-full md:w-auto">
         <div class="relative w-full md:w-[280px]">
@@ -15,7 +15,7 @@
           />
         </div>
         <Button class="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 whitespace-nowrap" @click="router.push('/sessions/create')">
-          <PlusIcon class="w-4 h-4" /> Create Session
+          <PlusIcon class="w-4 h-4" /> Buat Sesi
         </Button>
       </div>
     </div>
@@ -88,8 +88,11 @@
                <div class="text-slate-500 text-xs mt-0.5">{{ formatTime(getEndDate(s)) }}</div>
             </TableCell>
             <TableCell class="py-4 px-4 text-center">
-              <div class="inline-flex items-center justify-center bg-blue-50 text-blue-600 font-bold text-xs h-6 px-3 rounded-full">
-                {{ s.participant_count || 0 }}
+              <div class="inline-flex flex-col items-center">
+                <div class="inline-flex items-center justify-center bg-blue-50 text-blue-600 font-bold text-xs h-6 px-3 rounded-full">
+                  {{ s.submitted_participant_count || 0 }} / {{ s.total_participant_count || 0 }}
+                </div>
+                <span class="text-[10px] text-slate-400 mt-0.5">selesai / total</span>
               </div>
             </TableCell>
             <TableCell class="py-4 px-4">

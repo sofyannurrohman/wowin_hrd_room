@@ -30,8 +30,10 @@
               <Badge variant="outline">{{ q.type.replace('_', ' ').toUpperCase() }}</Badge>
             </TableCell>
             <TableCell>
-                <ImageIcon v-if="q.image_url" class="w-4 h-4 text-primary" />
-                <span v-else class="text-muted-foreground">-</span>
+              <div v-if="q.image_url" class="relative w-16 h-12 rounded overflow-hidden border border-slate-200">
+                <img :src="q.image_url" class="absolute inset-0 w-full h-full object-cover" alt="Lampiran" />
+              </div>
+              <span v-else class="text-muted-foreground">-</span>
             </TableCell>
             <TableCell>{{ getModuleName(q.module_id) }}</TableCell>
             <TableCell class="text-right flex justify-end gap-1">
@@ -61,7 +63,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { PlusIcon, ImageIcon, EditIcon, TrashIcon } from 'lucide-vue-next'
+import { PlusIcon, EditIcon, TrashIcon } from 'lucide-vue-next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const router = useRouter()

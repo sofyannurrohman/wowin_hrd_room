@@ -72,8 +72,24 @@ func (r *UserRepository) List(ctx context.Context) ([]domain.User, error) {
 }
 
 func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := r.db.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
-	return err
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Remove participant records first to avoid FK constraint violation
+	_, err = tx.Exec(ctx, `DELETE FROM session_participants WHERE user_id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete session_participants: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *UserRepository) Update(ctx context.Context, u *domain.User) error {

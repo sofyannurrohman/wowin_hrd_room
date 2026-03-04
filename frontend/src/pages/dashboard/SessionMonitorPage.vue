@@ -39,7 +39,7 @@
     <div class="flex items-center justify-between pt-4">
       <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
         <UsersIcon class="w-5 h-5 text-slate-400" />
-        {{ onlineCount }} Active Participants
+        {{ onlineCount }} Active / {{ onlineParticipants.length }} Total Participants
       </h3>
       <div class="flex bg-slate-100 p-1 rounded-lg">
         <button class="px-4 py-1.5 text-sm font-semibold rounded-md bg-white shadow-sm text-slate-800">Grid View</button>
@@ -175,7 +175,7 @@ import { Button } from '@/components/ui/button'
 import { 
   ArrowLeftIcon, UsersIcon, StopCircleIcon, VideoOffIcon,
   MicIcon, MicOffIcon, ShieldAlertIcon, AlertTriangleIcon, FocusIcon,
-  CheckCircle2Icon, EyeOffIcon, MaximizeIcon
+  CheckCircle2Icon, EyeOffIcon, MaximizeIcon, UserXIcon
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -194,7 +194,7 @@ let timerInterval: number | null = null
 const { isConnected, participantsStatus, recentViolations, participantFrames } = useWebSocket(sessionId)
 
 const onlineCount = computed(() => {
-  return Object.values(participantsStatus.value).filter(p => p.status === 'online').length
+  return Object.values(participantsStatus).filter((p: any) => p.status === 'online').length
 })
 
 const formattedTimeRemaining = computed(() => {
@@ -224,10 +224,10 @@ onMounted(async () => {
     const p = await client.get(`/sessions/${sessionId}/participants`)
     onlineParticipants.value = p.data || []
 
-    // Seed participantsStatus from DB (status stays as-is — only WS joins set 'online')
+    // Seed participantsStatus from DB (status stays as-is — only WS joins/frames set 'online')
     onlineParticipants.value.forEach((part: any) => {
-      if (!participantsStatus.value[part.id]) {
-        participantsStatus.value[part.id] = {
+      if (!participantsStatus[part.id]) {
+        participantsStatus[part.id] = {
           name: part.user_name || part.user_email || 'Unknown',
           status: part.status || 'active',
         }
@@ -263,6 +263,7 @@ const getWebcamBadgeStyle = (status: string) => {
   if (status === 'multiple_face') return 'bg-red-600/90 text-white'
   if (status === 'no_face') return 'bg-orange-600/90 text-white'
   if (status === 'tab_switch') return 'bg-yellow-500/90 text-slate-900'
+  if (status === 'offline' || status === 'finished') return 'bg-slate-500/90 text-white'
   return 'bg-green-600/90 text-white'
 }
 
@@ -270,6 +271,7 @@ const getWebcamBadgeIcon = (status: string) => {
   if (status === 'multiple_face') return AlertTriangleIcon
   if (status === 'no_face') return EyeOffIcon
   if (status === 'tab_switch') return FocusIcon
+  if (status === 'offline' || status === 'finished') return UserXIcon
   return CheckCircle2Icon
 }
 
@@ -277,6 +279,8 @@ const getWebcamStatusText = (status: string) => {
   if (status === 'multiple_face') return 'Multiple Faces'
   if (status === 'no_face') return 'No Face Detected'
   if (status === 'tab_switch') return 'Tab Switched'
+  if (status === 'offline' || status === 'finished') return 'Finished'
+  if (status === 'active') return 'Not Connected'
   return 'Face Detected'
 }
 

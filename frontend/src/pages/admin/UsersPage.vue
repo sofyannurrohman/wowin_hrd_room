@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 max-w-7xl mx-auto">
     <div class="flex items-center justify-between">
-      <h2 class="text-3xl font-bold tracking-tight">Manajemen Pengguna (HR)</h2>
+      <h2 class="text-3xl font-bold tracking-tight">Manajemen User (HR)</h2>
       <Button @click="showCreateDialog = true">
         <UserPlusIcon class="mr-2 h-4 w-4" /> Tambah HR
       </Button>
@@ -24,10 +24,12 @@
         </TableHeader>
         <TableBody>
           <TableRow v-for="user in users" :key="user.id">
-            <TableCell class="font-medium">{{ user.name || 'Admin / HR' }}</TableCell>
+            <TableCell class="font-medium">{{ user.name || (user.role_id === 1 ? 'Super Admin' : user.role_id === 2 ? 'HR' : 'Peserta') }}</TableCell>
             <TableCell>{{ user.email }}</TableCell>
             <TableCell>
-              <Badge :variant="user.role_id === 1 ? 'default' : 'outline'">{{ user.role_id === 1 ? 'Super Admin' : 'HR' }}</Badge>
+              <Badge :variant="user.role_id === 1 ? 'default' : user.role_id === 2 ? 'secondary' : 'outline'">
+                {{ user.role_id === 1 ? 'Super Admin' : user.role_id === 2 ? 'HR' : 'Peserta' }}
+              </Badge>
             </TableCell>
             <TableCell class="text-right flex justify-end gap-1">
               <Button variant="ghost" size="icon" @click="openEditDialog(user)">
@@ -88,7 +90,7 @@
             <Input v-model="editForm.email" type="email" placeholder="hr.baru@hrdroom.com"/>
           </div>
           <div class="space-y-2">
-            <Label>Role ID (1=Super Admin, 2=HR)</Label>
+            <Label>Role ID (1=Super Admin, 2=HR, 3=Peserta)</Label>
             <Input v-model.number="editForm.role_id" type="number"/>
           </div>
         </div>
@@ -175,7 +177,8 @@ const submitEditUser = async () => {
 const loadUsers = async () => {
   try {
     const res = await client.get('/admin/users')
-    users.value = res.data || []
+    // Filter out participants (role_id 3) so this page only shows Admins and HRs
+    users.value = (res.data || []).filter((u: any) => u.role_id !== 3)
   } catch(e) {
     showError('Gagal memuat daftar pengguna')
   }

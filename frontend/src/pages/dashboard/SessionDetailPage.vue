@@ -8,6 +8,12 @@
         <h2 class="text-3xl font-bold tracking-tight">{{ session.name }}</h2>
       </div>
       <div class="flex gap-2">
+        <Button variant="outline" @click="router.push(`/sessions/${session.id}/violations`)">
+          <ShieldAlertIcon class="w-4 h-4 mr-2"/> Review Pelanggaran
+        </Button>
+        <Button variant="outline" @click="router.push(`/sessions/${session.id}/analytics`)">
+          <BarChart3Icon class="w-4 h-4 mr-2"/> Analitik Hasil
+        </Button>
         <Button variant="outline" @click="router.push(`/sessions/${session.id}/results`)">
           <FileTextIcon class="w-4 h-4 mr-2"/> Cek Hasil & Evaluasi
         </Button>
@@ -84,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import client from '@/api/client'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
@@ -93,7 +99,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeftIcon, MonitorPlayIcon, FileTextIcon } from 'lucide-vue-next'
+import { ArrowLeftIcon, MonitorPlayIcon, FileTextIcon, ShieldAlertIcon, BarChart3Icon } from 'lucide-vue-next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const router = useRouter()

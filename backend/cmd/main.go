@@ -120,6 +120,8 @@ func main() {
 		api.GET("/exam/:sessionId/modules", examH.GetModules)
 		api.GET("/exam/:sessionId/modules/:moduleId/questions", examH.GetQuestionsForModule)
 		api.POST("/exam/:sessionId/answers", examH.SubmitAnswers)
+		api.POST("/exam/:sessionId/answers/autosave", examH.AutoSaveAnswers)
+		api.GET("/exam/answers/:participantId", examH.GetParticipantAnswersPublic)
 		api.POST("/violations", examH.ReportViolation)
 		api.GET("/job-positions/active", jobPositionH.ListActive)
 		// WebSocket (no JWT auth, uses query params for role/participant)
@@ -159,6 +161,7 @@ func main() {
 			hrRoutes.GET("modules/:id", moduleH.GetByID)
 			hrRoutes.PUT("modules/:id", moduleH.Update)
 			hrRoutes.DELETE("modules/:id", moduleH.Delete)
+			hrRoutes.GET("sessions/:id/modules", examH.GetModules)
 
 			// Job Positions
 			hrRoutes.GET("job-positions", jobPositionH.ListAll)
@@ -184,6 +187,10 @@ func main() {
 			hrRoutes.GET("results/:participantId/answers", examH.GetParticipantAnswers)
 			hrRoutes.PUT("results/:id/review", examH.HRReview)
 			hrRoutes.POST("results/:id/finalize", examH.FinalizeScore)
+
+			// Participant user management (HR can update and delete participants)
+			hrRoutes.PUT("participants/:id", adminH.UpdateUser)
+			hrRoutes.DELETE("participants/:id", adminH.DeleteUser)
 		}
 
 		// ─── Super Admin Only ─────────────────────────────────────────────────

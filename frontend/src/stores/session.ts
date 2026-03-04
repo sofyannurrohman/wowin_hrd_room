@@ -3,8 +3,8 @@ import client from '@/api/client'
 
 export const useSessionStore = defineStore('session', {
   state: () => ({
-    sessions: [],
-    currentSession: null,
+    sessions: [] as any[],
+    currentSession: null as any,
   }),
   actions: {
     async fetchSessions() {

@@ -29,7 +29,9 @@ func (r *SessionRepository) Create(ctx context.Context, s *domain.Session) error
 func (r *SessionRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Session, error) {
 	query := `SELECT s.id, s.created_by, u.name, s.name, s.schedule, s.duration_minutes,
 	          s.max_participants, s.randomize_questions, s.show_score, s.is_locked, s.created_at,
-	          COUNT(sp.id) FILTER (WHERE sp.status = 'active') as participant_count
+	          COUNT(sp.id) FILTER (WHERE sp.status = 'active') as active_participant_count,
+	          COUNT(sp.id) FILTER (WHERE sp.status = 'finished') as submitted_participant_count,
+	          COUNT(sp.id) as total_participant_count
 	          FROM sessions s
 	          LEFT JOIN users u ON s.created_by = u.id
 	          LEFT JOIN session_participants sp ON sp.session_id = s.id
@@ -39,7 +41,8 @@ func (r *SessionRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain
 	s := &domain.Session{}
 	err := row.Scan(&s.ID, &s.CreatedBy, &s.CreatedByName, &s.Name, &s.Schedule,
 		&s.DurationMinutes, &s.MaxParticipants, &s.RandomizeQuestions,
-		&s.ShowScore, &s.IsLocked, &s.CreatedAt, &s.ParticipantCount)
+		&s.ShowScore, &s.IsLocked, &s.CreatedAt, &s.ActiveParticipantCount,
+		&s.SubmittedParticipantCount, &s.TotalParticipantCount)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +52,9 @@ func (r *SessionRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain
 func (r *SessionRepository) List(ctx context.Context, createdBy *uuid.UUID) ([]domain.Session, error) {
 	query := `SELECT s.id, s.created_by, u.name, s.name, s.schedule, s.duration_minutes,
 	          s.max_participants, s.randomize_questions, s.show_score, s.is_locked, s.created_at,
-	          COUNT(sp.id) FILTER (WHERE sp.status = 'active') as participant_count
+	          COUNT(sp.id) FILTER (WHERE sp.status = 'active') as active_participant_count,
+	          COUNT(sp.id) FILTER (WHERE sp.status = 'finished') as submitted_participant_count,
+	          COUNT(sp.id) as total_participant_count
 	          FROM sessions s
 	          LEFT JOIN users u ON s.created_by = u.id
 	          LEFT JOIN session_participants sp ON sp.session_id = s.id`
@@ -71,7 +76,8 @@ func (r *SessionRepository) List(ctx context.Context, createdBy *uuid.UUID) ([]d
 		var s domain.Session
 		if err := rows.Scan(&s.ID, &s.CreatedBy, &s.CreatedByName, &s.Name, &s.Schedule,
 			&s.DurationMinutes, &s.MaxParticipants, &s.RandomizeQuestions,
-			&s.ShowScore, &s.IsLocked, &s.CreatedAt, &s.ParticipantCount); err != nil {
+			&s.ShowScore, &s.IsLocked, &s.CreatedAt, &s.ActiveParticipantCount,
+			&s.SubmittedParticipantCount, &s.TotalParticipantCount); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)

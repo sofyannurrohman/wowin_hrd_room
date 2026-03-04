@@ -145,8 +145,10 @@ const correctTextAnswer = ref('')
 
 let questionId = ''
 
-const getImageUrl = (path: string) => {
-    return import.meta.env.VITE_API_BASE_URL.replace('/api', '') + path
+const getImageUrl = (path: string | null | undefined) => {
+    if (!path) return ''
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+    return baseUrl ? baseUrl.replace('/api', '') + path : path
 }
 
 onMounted(async () => {

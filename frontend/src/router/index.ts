@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useExamStore } from '@/stores/exam'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -72,6 +73,21 @@ const router = createRouter({
           component: () => import('../pages/dashboard/SessionResultsPage.vue')
         },
         {
+          path: '/sessions/:id/violations',
+          name: 'sessionViolations',
+          component: () => import('../pages/dashboard/SessionViolationsPage.vue')
+        },
+        {
+          path: '/sessions/:id/analytics',
+          name: 'sessionAnalytics',
+          component: () => import('../pages/dashboard/SessionAnalyticsPage.vue')
+        },
+        {
+          path: '/sessions/:id/results/:participantId/answers',
+          name: 'participantAnswers',
+          component: () => import('../pages/dashboard/ParticipantAnswersPage.vue')
+        },
+        {
           path: '/participants',
           name: 'participantsList',
           component: () => import('../pages/dashboard/ParticipantsPage.vue')
@@ -134,13 +150,17 @@ const router = createRouter({
 
 router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
+  const examStore = useExamStore()
   
-  // if not authenticated and it requires auth, fetch profile or redirect
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  // On page reload: token is in localStorage (isAuthenticated = true) but user profile
+  // is null (Pinia resets in-memory). Fetch the profile before checking role-based guards.
+  if (authStore.isAuthenticated && !authStore.user) {
     await authStore.fetchUser()
-    if (!authStore.isAuthenticated) {
-      return next({ name: 'login' })
-    }
+  }
+
+  // If route requires auth and user is still not authenticated (bad/expired token), redirect to login
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return next({ name: 'login' })
   }
 
   if (to.meta.requiresHR && !authStore.isHR) {
@@ -149,6 +169,25 @@ router.beforeEach(async (to, _from, next) => {
 
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
     return next({ name: 'dashboardOverview' })
+  }
+
+  // ─── Exam session guard ──────────────────────────────────────────────────
+  // If user has an active exam session, redirect /join back to the exam
+  if (to.name === 'join') {
+    const participantId = examStore.participantId || localStorage.getItem('participantId')
+    const sessionId = examStore.sessionId || localStorage.getItem('examSessionId')
+    if (participantId && sessionId) {
+      return next({ name: 'exam', params: { sessionId } })
+    }
+  }
+
+  // If exam route requires an active session, redirect to /join if missing
+  if (to.meta.requiresExamSession) {
+    const participantId = examStore.participantId || localStorage.getItem('participantId')
+    const sessionId = examStore.sessionId || localStorage.getItem('examSessionId')
+    if (!participantId || !sessionId) {
+      return next({ name: 'join' })
+    }
   }
 
   next()

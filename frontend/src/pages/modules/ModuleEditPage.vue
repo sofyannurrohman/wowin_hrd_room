@@ -5,13 +5,13 @@
         <ArrowLeftIcon class="w-5 h-5" />
       </router-link>
       <div>
-        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Edit Module</h1>
-        <p class="text-sm text-slate-500 mt-1">Update module details</p>
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Ubah Modul</h1>
+        <p class="text-sm text-slate-500 mt-1">Update detail modul</p>
       </div>
     </div>
 
     <div v-if="loading" class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center text-slate-500">
-      Loading module...
+      Memuat modul...
     </div>
 
     <div v-else class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -20,7 +20,7 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">
-              Module Name <span class="text-red-500">*</span>
+              Nama Module <span class="text-red-500">*</span>
             </label>
             <input
               v-model="form.name"
@@ -32,7 +32,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
             <textarea
               v-model="form.description"
               rows="4"

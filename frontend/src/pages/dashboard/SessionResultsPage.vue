@@ -35,15 +35,19 @@
           </TableHeader>
           <TableBody>
             <TableRow v-for="res in results" :key="res.id">
-              <TableCell class="font-medium">{{ res.participant?.user?.name || res.participant_id }}</TableCell>
-              <TableCell>{{ res.participant?.user?.email || '-' }}</TableCell>
+              <TableCell class="font-medium">{{ res.user_name || '-' }}</TableCell>
+              <TableCell>{{ res.user_email || '-' }}</TableCell>
               <TableCell>Disubmit</TableCell>
               <TableCell class="font-bold text-primary">{{ res.total_score }}</TableCell>
               <TableCell>
-                <Badge :variant="res.status === 'Finalized' ? 'default' : 'secondary'">{{ res.status }}</Badge>
+                <Badge :variant="res.grading_status === 'completed' ? 'default' : 'secondary'">
+                  {{ res.grading_status === 'completed' ? 'Selesai' : 'Menunggu Review' }}
+                </Badge>
               </TableCell>
-              <TableCell class="text-right">
-                 <Button size="sm" @click="submitFinalize(res)" :disabled="res.status === 'completed'" v-if="res.status !== 'completed'">Finalisasi</Button>
+              <TableCell class="text-right flex items-center justify-end gap-2">
+                <Button size="sm" variant="outline" @click="router.push(`/sessions/${sessionId}/results/${res.participant_id}/answers`)" v-if="res.grading_status !== 'completed'">Review Jawaban</Button>
+                <Button size="sm" variant="ghost" @click="router.push(`/sessions/${sessionId}/results/${res.participant_id}/answers`)" v-else>Lihat Jawaban</Button>
+                <Button size="sm" @click="submitFinalize(res)" v-if="res.grading_status !== 'completed'">Finalisasi</Button>
               </TableCell>
             </TableRow>
             <TableRow v-if="results.length === 0">

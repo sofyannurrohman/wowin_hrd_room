@@ -31,18 +31,20 @@ type User struct {
 // ─── Session ─────────────────────────────────────────────────────────────────
 
 type Session struct {
-	ID                 uuid.UUID `json:"id"`
-	CreatedBy          uuid.UUID `json:"created_by"`
-	CreatedByName      string    `json:"created_by_name,omitempty"`
-	Name               string    `json:"name"`
-	Schedule           time.Time `json:"schedule"`
-	DurationMinutes    int       `json:"duration_minutes"`
-	MaxParticipants    int       `json:"max_participants"`
-	RandomizeQuestions bool      `json:"randomize_questions"`
-	ShowScore          bool      `json:"show_score"`
-	IsLocked           bool      `json:"is_locked"`
-	CreatedAt          time.Time `json:"created_at"`
-	ParticipantCount   int       `json:"participant_count,omitempty"`
+	ID                        uuid.UUID `json:"id"`
+	CreatedBy                 uuid.UUID `json:"created_by"`
+	CreatedByName             string    `json:"created_by_name,omitempty"`
+	Name                      string    `json:"name"`
+	Schedule                  time.Time `json:"schedule"`
+	DurationMinutes           int       `json:"duration_minutes"`
+	MaxParticipants           int       `json:"max_participants"`
+	RandomizeQuestions        bool      `json:"randomize_questions"`
+	ShowScore                 bool      `json:"show_score"`
+	IsLocked                  bool      `json:"is_locked"`
+	CreatedAt                 time.Time `json:"created_at"`
+	ActiveParticipantCount    int       `json:"active_participant_count"`
+	SubmittedParticipantCount int       `json:"submitted_participant_count"`
+	TotalParticipantCount     int       `json:"total_participant_count"`
 }
 
 // ─── ExamToken ───────────────────────────────────────────────────────────────
