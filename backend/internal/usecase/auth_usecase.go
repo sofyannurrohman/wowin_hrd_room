@@ -50,10 +50,17 @@ func (uc *AuthUseCase) Login(ctx context.Context, req LoginRequest) (*LoginRespo
 }
 
 type RegisterRequest struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	RoleID   int    `json:"role_id"`
+	Name            string  `json:"name" binding:"required"`
+	Email           string  `json:"email" binding:"required,email"`
+	Password        string  `json:"password" binding:"required,min=6"`
+	RoleID          int     `json:"role_id"`
+	Age             *int    `json:"age,omitempty"`
+	AppliedPosition *string `json:"applied_position,omitempty"`
+	ExpectedSalary  *string `json:"expected_salary,omitempty"`
+	CvURL           *string `json:"cv_url,omitempty"`
+	Address         *string `json:"address,omitempty"`
+	LastEducation   *string `json:"last_education,omitempty"`
+	WhatsappNumber  *string `json:"whatsapp_number,omitempty"`
 }
 
 func (uc *AuthUseCase) Register(ctx context.Context, req RegisterRequest) (*domain.User, error) {
@@ -68,12 +75,19 @@ func (uc *AuthUseCase) Register(ctx context.Context, req RegisterRequest) (*doma
 	}
 
 	user := &domain.User{
-		ID:           uuid.New(),
-		RoleID:       roleID,
-		Name:         req.Name,
-		Email:        req.Email,
-		PasswordHash: hash,
-		CreatedAt:    time.Now(),
+		ID:              uuid.New(),
+		RoleID:          roleID,
+		Name:            req.Name,
+		Email:           req.Email,
+		PasswordHash:    hash,
+		Age:             req.Age,
+		AppliedPosition: req.AppliedPosition,
+		ExpectedSalary:  req.ExpectedSalary,
+		Address:         req.Address,
+		LastEducation:   req.LastEducation,
+		WhatsappNumber:  req.WhatsappNumber,
+		CvURL:           req.CvURL,
+		CreatedAt:       time.Time{}, // Handled by repository
 	}
 
 	if err := uc.userRepo.Create(ctx, user); err != nil {

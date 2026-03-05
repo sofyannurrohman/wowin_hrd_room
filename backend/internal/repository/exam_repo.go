@@ -152,6 +152,15 @@ func (r *ResultRepository) FindByParticipant(ctx context.Context, participantID 
 	return res, row.Scan(&res.ID, &res.ParticipantID, &res.UserName, &res.UserEmail, &res.TotalScore, &res.GradingStatus, &res.SubmittedAt)
 }
 
+func (r *ResultRepository) FindByID(ctx context.Context, resultID uuid.UUID) (*domain.Result, error) {
+	row := r.db.QueryRow(ctx,
+		`SELECT r.id, r.participant_id, u.name, u.email, r.total_score, r.grading_status, r.submitted_at
+		 FROM results r JOIN session_participants sp ON r.participant_id = sp.id JOIN users u ON sp.user_id = u.id
+		 WHERE r.id=$1`, resultID)
+	res := &domain.Result{}
+	return res, row.Scan(&res.ID, &res.ParticipantID, &res.UserName, &res.UserEmail, &res.TotalScore, &res.GradingStatus, &res.SubmittedAt)
+}
+
 func (r *ResultRepository) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]domain.Result, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT r.id, r.participant_id, u.name, u.email, r.total_score, r.grading_status, r.submitted_at

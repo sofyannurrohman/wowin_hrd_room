@@ -25,6 +25,11 @@ type User struct {
 	PasswordHash    string    `json:"-"`
 	Age             *int      `json:"age,omitempty"`
 	AppliedPosition *string   `json:"applied_position,omitempty"`
+	Address         *string   `json:"address,omitempty"`
+	LastEducation   *string   `json:"last_education,omitempty"`
+	WhatsappNumber  *string   `json:"whatsapp_number,omitempty"`
+	CvURL           *string   `json:"cv_url,omitempty"`
+	ExpectedSalary  *string   `json:"expected_salary,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 }
 

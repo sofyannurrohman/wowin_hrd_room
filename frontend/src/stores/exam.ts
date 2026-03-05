@@ -18,7 +18,12 @@ export const useExamStore = defineStore('exam', {
     currentModuleIndex: 0,
     allQuestions: [] as any[],
     questions: [] as any[],
-    answers: {} as Record<string, any>,
+    answers: (() => {
+      try {
+        const saved = localStorage.getItem('examAnswers')
+        return saved ? JSON.parse(saved) : {}
+      } catch { return {} }
+    })() as Record<string, any>,
     // Restore timeRemaining from the persisted end timestamp so reload doesn't trigger auto-submit
     timeRemaining: (() => {
       const end = Number(localStorage.getItem('examEndTimestamp') || 0)
@@ -114,6 +119,54 @@ export const useExamStore = defineStore('exam', {
 
     setAnswer(questionId: string, answer: any) {
       this.answers[questionId] = answer
+      // Persist to localStorage for instant restore on page reload
+      try {
+        localStorage.setItem('examAnswers', JSON.stringify(this.answers))
+      } catch { /* ignore quota errors */ }
+    },
+
+    /** Fetch already-saved answers from backend and merge into local store */
+    async fetchAnswersFromBackend() {
+      if (!this.participantId) return
+      try {
+        const res = await client.get(`/exam/answers/${this.participantId}`)
+        const backendAnswers: any[] = res.data || []
+        for (const a of backendAnswers) {
+          const qId: string = a.question_id
+          if (!qId) continue
+          // Only overwrite local if backend has a non-null value
+          const existing = this.answers[qId]
+          const merged: Record<string, any> = { ...(existing || {}) }
+          if (a.selected_option_id) merged.selected_option_id = a.selected_option_id
+          if (a.text_answer)        merged.text_answer        = a.text_answer
+          if (Object.keys(merged).length > 0) {
+            this.answers[qId] = merged
+          }
+        }
+        // Re-persist merged result
+        localStorage.setItem('examAnswers', JSON.stringify(this.answers))
+      } catch (e) {
+        console.warn('[exam] fetchAnswersFromBackend failed:', e)
+      }
+    },
+
+    /** Silently push all current answers to the backend autosave endpoint */
+    async autoSaveToBackend() {
+      if (!this.participantId || !this.sessionId) return
+      const answersArr = Object.entries(this.answers).map(([qId, ans]: [string, any]) => ({
+        question_id: qId,
+        selected_option_id: ans.selected_option_id || null,
+        text_answer: ans.text_answer || null
+      }))
+      if (answersArr.length === 0) return
+      try {
+        await client.post(`/exam/${this.sessionId}/answers/autosave`, {
+          participant_id: this.participantId,
+          answers: answersArr
+        })
+      } catch (e) {
+        console.warn('[exam] autoSaveToBackend failed:', e)
+      }
     },
 
     async submitExam() {
@@ -163,6 +216,7 @@ export const useExamStore = defineStore('exam', {
       localStorage.removeItem('examSessionId')
       localStorage.removeItem('sessionName')
       localStorage.removeItem('examEndTimestamp')
+      localStorage.removeItem('examAnswers')
     }
   }
 })

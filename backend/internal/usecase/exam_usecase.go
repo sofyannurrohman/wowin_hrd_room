@@ -281,8 +281,8 @@ func (uc *ExamUseCase) HRReview(ctx context.Context, req HRReviewRequest) error 
 }
 
 func (uc *ExamUseCase) FinalizeScore(ctx context.Context, resultID uuid.UUID) error {
-	// Re-aggregate score from answers
-	result, err := uc.resultRepo.FindByParticipant(ctx, resultID)
+	// Fetch the result row by its own ID (not participant_id)
+	result, err := uc.resultRepo.FindByID(ctx, resultID)
 	if err != nil {
 		return err
 	}

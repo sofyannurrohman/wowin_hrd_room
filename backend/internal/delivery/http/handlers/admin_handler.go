@@ -1,8 +1,13 @@
 package handlers
 
 import (
+	"encoding/csv"
+	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
+	"hrd_room/backend/internal/domain"
 	"hrd_room/backend/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -90,4 +95,121 @@ func (h *AdminHandler) GetLogs(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, logs)
+}
+
+// POST /api/participants/import
+func (h *AdminHandler) ImportParticipants(c *gin.Context) {
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file CSV wajib diunggah"})
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	// Read header
+	header, err := reader.Read()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "gagal membaca header CSV"})
+		return
+	}
+
+	// Map header columns to indices
+	colMap := make(map[string]int)
+	for i, col := range header {
+		colMap[strings.ToLower(strings.TrimSpace(col))] = i
+	}
+
+	nameIdx, nameOk := colMap["name"]
+	emailIdx, emailOk := colMap["email"]
+	if !nameOk || !emailOk {
+		// Try indonesian
+		nameIdx, nameOk = colMap["nama"]
+		emailIdx, emailOk = colMap["email"]
+		if !nameOk || !emailOk {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "CSV harus memiliki kolom 'name' atau 'nama', dan 'email'"})
+			return
+		}
+	}
+
+	ageIdx, ageOk := colMap["age"]
+	if !ageOk {
+		ageIdx, ageOk = colMap["umur"]
+	}
+
+	posIdx, posOk := colMap["position"]
+	if !posOk {
+		posIdx, posOk = colMap["posisi"]
+	}
+
+	imported := 0
+	skipped := 0
+	var skippedEmails []string
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil || len(record) == 0 {
+			continue // skip broken rows
+		}
+
+		name := ""
+		if len(record) > nameIdx {
+			name = strings.TrimSpace(record[nameIdx])
+		}
+		email := ""
+		if len(record) > emailIdx {
+			email = strings.TrimSpace(record[emailIdx])
+		}
+
+		if name == "" || email == "" {
+			skipped++
+			continue
+		}
+
+		// Check if user exists
+		_, err = h.userRepo.FindByEmail(c.Request.Context(), email)
+		if err == nil {
+			skipped++
+			skippedEmails = append(skippedEmails, email)
+			continue // User exist
+		}
+
+		u := &domain.User{
+			ID:     uuid.New(),
+			RoleID: 3, // Peserta
+			Name:   name,
+			Email:  email,
+		}
+
+		if ageOk && len(record) > ageIdx {
+			ageStr := strings.TrimSpace(record[ageIdx])
+			if age, err := strconv.Atoi(ageStr); err == nil && age > 0 {
+				u.Age = &age
+			}
+		}
+
+		if posOk && len(record) > posIdx {
+			pos := strings.TrimSpace(record[posIdx])
+			if pos != "" {
+				u.AppliedPosition = &pos
+			}
+		}
+
+		if err := h.userRepo.Create(c.Request.Context(), u); err != nil {
+			skipped++
+			skippedEmails = append(skippedEmails, email)
+		} else {
+			imported++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "Import selesai",
+		"imported":       imported,
+		"skipped":        skipped,
+		"skipped_emails": skippedEmails,
+	})
 }

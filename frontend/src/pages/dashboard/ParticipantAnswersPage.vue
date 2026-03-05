@@ -84,16 +84,26 @@
           </div>
 
           <!-- HR Notes & Manual Scoring -->
-          <div v-if="ans.question?.requires_manual_review" class="mt-6 pt-4 border-t border-slate-100 space-y-4">
+          <div v-if="ans.question?.requires_manual_review && reviewData[ans.id]" class="mt-6 pt-4 border-t border-slate-100 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div class="md:col-span-3 space-y-2">
                 <Label class="text-xs text-slate-500">Catatan HR (Opsional)</Label>
-                <Textarea v-model="reviewData[ans.id].notes" placeholder="Berikan catatan review..." class="min-h-[80px] text-sm" />
+                <Textarea v-model="getReview(ans.id).notes" placeholder="Berikan catatan review..." class="min-h-[80px] text-sm" />
               </div>
               <div class="space-y-2">
                 <Label class="text-xs text-slate-500">Nilai (Max: {{ ans.question?.weight }})</Label>
-                <Input type="number" v-model.number="reviewData[ans.id].score" min="0" :max="ans.question?.weight" class="text-sm" />
-                <Button @click="submitReview(ans.id)" class="w-full mt-2" size="sm" :disabled="saving === ans.id">
+                <Input
+                  type="number"
+                  v-model.number="getReview(ans.id).score"
+                  min="0"
+                  :max="ans.question?.weight"
+                  :class="['text-sm', scoreErrors[ans.id] ? 'border-red-400 focus-visible:ring-red-400' : '']"
+                  @input="validateScore(ans.id, ans.question?.weight)"
+                />
+                <p v-if="scoreErrors[ans.id]" class="text-xs text-red-500 font-medium">
+                  {{ scoreErrors[ans.id] }}
+                </p>
+                <Button @click="submitReview(ans.id)" class="w-full mt-2" size="sm" :disabled="saving === ans.id || !!scoreErrors[ans.id]">
                   {{ saving === ans.id ? 'Loading...' : 'Simpan Nilai' }}
                 </Button>
               </div>
@@ -113,6 +123,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from 'vue'
+import { toast } from 'vue-sonner'
 import { useRouter, useRoute } from 'vue-router'
 import client from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -136,7 +147,14 @@ const modules = ref<any[]>([])
 const allQuestions = ref<any[]>([])
 
 const reviewData = reactive<Record<string, { score: number, notes: string }>>({})
+const scoreErrors = reactive<Record<string, string>>({})
 const saving = ref<string | null>(null)
+
+/** Type-safe accessor – always returns a defined review entry (initialised in loadData) */
+const getReview = (id: string): { score: number; notes: string } => {
+  if (!reviewData[id]) reviewData[id] = { score: 0, notes: '' }
+  return reviewData[id] as { score: number; notes: string }
+}
 
 const loadData = async () => {
   loading.value = true
@@ -226,24 +244,53 @@ const getOptionStyle = (opt: any, selectedId: string) => {
   return 'bg-white border-slate-100 text-slate-600'
 }
 
+const validateScore = (answerId: string, maxWeight: number | undefined) => {
+  if (maxWeight === undefined) return
+  const score = reviewData[answerId]?.score ?? 0
+  if (score < 0) {
+    scoreErrors[answerId] = 'Nilai tidak boleh negatif.'
+  } else if (score > maxWeight) {
+    scoreErrors[answerId] = `Nilai melebihi batas maksimal (${maxWeight}).`
+  } else {
+    delete scoreErrors[answerId]
+  }
+}
+
 const submitReview = async (answerId: string) => {
   if (!reviewData[answerId]) return
+
+  // Find the question to get the max weight
+  const ans = combinedAnswers.value.find(a => a.id === answerId)
+  const maxWeight = ans?.question?.weight ?? Infinity
+  const score = reviewData[answerId].score
+
+  if (score < 0) {
+    toast.error('Nilai tidak boleh negatif.')
+    return
+  }
+  if (score > maxWeight) {
+    toast.error(`Nilai tidak boleh melebihi batas maksimal (${maxWeight}).`)
+    return
+  }
+
   saving.value = answerId
   try {
     await client.put(`/results/${answerId}/review`, {
       answer_id: answerId,
-      score: reviewData[answerId].score,
+      score,
       notes: reviewData[answerId].notes
     })
     // Successfully saved, update local state
     const ansIndex = answers.value.findIndex(a => a.id === answerId)
     if (ansIndex !== -1) {
-      answers.value[ansIndex].score = reviewData[answerId].score
+      answers.value[ansIndex].score = score
       answers.value[ansIndex].hr_notes = reviewData[answerId].notes
     }
+    toast.success('Nilai berhasil disimpan.')
+    delete scoreErrors[answerId]
   } catch (e) {
     console.error('Failed to submit review', e)
-    alert('Gagal menyimpan nilai')
+    toast.error('Gagal menyimpan nilai. Silakan coba lagi.')
   } finally {
     saving.value = null
   }

@@ -41,6 +41,17 @@
             </svg>
             {{ formattedTime }}
           </div>
+          <!-- Previous Module button (hidden on first module) -->
+          <button
+            v-if="examStore.currentModuleIndex > 0"
+            @click="goToPreviousModule"
+            :disabled="examStore.isSubmitting || showingTransition"
+            class="flex items-center gap-2 px-4 py-2.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Modul Sebelumnya
+          </button>
+
           <button
             @click="handlePrimaryAction"
             :disabled="examStore.isSubmitting || showingTransition"
@@ -54,8 +65,8 @@
       </div>
     </header>
 
-    <!-- ─── Module Transition Modal ──────────────────────────────── -->
-    <div v-if="showingTransition" class="flex-1 flex items-center justify-center p-12">
+    <!-- ─── Module Transition Overlay (fixed so <main> stays mounted) ── -->
+    <div v-if="showingTransition" class="fixed inset-0 z-30 bg-gray-50/95 flex items-center justify-center p-12">
       <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-12 flex flex-col items-center gap-5 max-w-lg w-full text-center">
         <!-- Step indicator -->
         <div class="flex items-center gap-2 text-xs font-semibold text-blue-600 bg-blue-50 px-4 py-1.5 rounded-full">
@@ -73,14 +84,23 @@
         <p class="text-gray-500 text-sm max-w-sm">
           Anda akan mulai mengerjakan modul ujian berikutnya. Pastikan Anda sudah siap sebelum melanjutkan.
         </p>
-        <button @click="startNextModule" class="mt-2 px-10 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-base shadow-sm">
-          Mulai Modul Sekarang
-        </button>
+        <div class="flex gap-3 mt-2">
+          <button
+            v-if="examStore.currentModuleIndex > 0"
+            @click="goToPreviousModule"
+            class="px-6 py-3 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl transition-colors text-base"
+          >
+            ← Kembali
+          </button>
+          <button @click="startNextModule" class="flex-1 px-10 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-base shadow-sm">
+            Mulai Modul Sekarang
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- ─── Main 3-column layout ──────────────────────────────────── -->
-    <main v-else class="flex-1 max-w-[1400px] w-full mx-auto px-4 py-5 grid grid-cols-[210px_1fr_230px] gap-5">
+    <!-- ─── Main 3-column layout (always mounted to keep camera alive) ── -->
+    <main class="flex-1 max-w-[1400px] w-full mx-auto px-4 py-5 grid grid-cols-[210px_1fr_230px] gap-5">
 
       <!-- Left: Question Navigation -->
       <aside class="sticky top-[73px] self-start space-y-3">
@@ -146,7 +166,7 @@
             </div>
 
             <!-- Options (MCQ / True-False) -->
-            <div v-if="currentQuestion.type === 'Multiple Choice' || currentQuestion.type === 'True/False'" class="px-6 pb-4 space-y-3">
+            <div v-if="currentQuestion.type === 'Multiple Choice' || currentQuestion.type === 'True/False' || currentQuestion.type === 'multiple_choice' || currentQuestion.type === 'true_false'" class="px-6 pb-4 space-y-3">
               <label
                 v-for="opt in currentQuestion.options"
                 :key="opt.id"
@@ -330,7 +350,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useExamStore } from '@/stores/exam'
 import { useCamera } from '@/composables/useCamera'
@@ -443,11 +463,12 @@ const setAnswer = (questionId: string, payload: any) => { examStore.setAnswer(qu
 // ─── Camera & Anti-cheat ─────────────────────────────────────────
 const videoRef = ref<HTMLVideoElement | null>(null)
 const captureCanvas = ref<HTMLCanvasElement | null>(null)
-const { startCamera, stopCamera } = useCamera()
+const { stream: cameraStream, startCamera, stopCamera } = useCamera()
 const { faceStatus, initFaceDetection, startDetection, stopDetection, setupBrowserAntiCheat, removeBrowserAntiCheat } = useAntiCheat()
 const { sessionEnded, sendCameraFrame, sendParticipantFinish } = useWebSocket(sessionId, examStore.participantId || undefined)
 
 let frameCaptureInterval: number | null = null
+let autoSaveInterval: number | null = null
 
 const captureAndSendFrame = () => {
   const video = videoRef.value
@@ -486,8 +507,10 @@ const handleBeforeUnload = (e: BeforeUnloadEvent) => {
 window.addEventListener('beforeunload', handleBeforeUnload)
 
 // Warn participants when they try to navigate away within the SPA
-onBeforeRouteLeave((_to, _from) => {
+onBeforeRouteLeave((to, _from) => {
   if (examStore.isSubmitting) return true
+  if (to.path === '/exam-finished') return true // bypass check if we are successfully submitting
+
   const confirmed = window.confirm(
     'Anda yakin ingin keluar dari halaman ujian? Progres jawaban Anda sudah tersimpan otomatis.'
   )
@@ -506,6 +529,9 @@ onMounted(async () => {
 
   await examStore.fetchModulesAndStart()
 
+  // Restore answers from backend (merge with any localStorage answers already loaded)
+  await examStore.fetchAnswersFromBackend()
+
   if (videoRef.value) {
     await startCamera(videoRef.value)
     await initFaceDetection(videoRef.value)
@@ -514,6 +540,11 @@ onMounted(async () => {
   }
 
   setupBrowserAntiCheat()
+
+  // Autosave answers to backend every 30 seconds silently
+  autoSaveInterval = window.setInterval(() => {
+    examStore.autoSaveToBackend()
+  }, 30_000)
 
   // Only start countdown if there is actually time remaining (avoids instant submit on reload)
   if (timeRemaining.value > 0) {
@@ -543,6 +574,7 @@ onUnmounted(() => {
   removeBrowserAntiCheat()
   if (timerInterval) clearInterval(timerInterval)
   if (frameCaptureInterval) clearInterval(frameCaptureInterval)
+  if (autoSaveInterval) clearInterval(autoSaveInterval)
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
@@ -552,6 +584,8 @@ const handlePrimaryAction = () => {
     // On the last module, Finish Test ends the exam
     showSubmitDialog.value = true
   } else if (isLastQuestionInModule.value) {
+    // Autosave before moving to next module
+    examStore.autoSaveToBackend()
     // Last question of the current module → show transition to next module
     examStore.currentModuleIndex++
     examStore.loadCurrentModuleQuestions()
@@ -568,6 +602,21 @@ const handlePrimaryAction = () => {
 const startNextModule = () => {
   showingTransition.value = false
   currentQuestionIndex.value = 0
+}
+
+const goToPreviousModule = () => {
+  if (examStore.currentModuleIndex <= 0) return
+  // Autosave before navigating away
+  examStore.autoSaveToBackend()
+  // Hide the transition modal if it's open
+  showingTransition.value = false
+  // Move back one module
+  examStore.currentModuleIndex--
+  examStore.loadCurrentModuleQuestions()
+  // Land on the last question of the previous module so the participant can review
+  currentQuestionIndex.value = Math.max(0, examStore.questions.length - 1)
+  markedForReview.value = new Set()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const doSubmit = async () => {
@@ -587,6 +636,20 @@ const doSubmit = async () => {
 watch(faceStatus, (newStat) => {
   if (newStat === 'no-face') toast.error('Peringatan: Wajah tidak terdeteksi!')
   if (newStat === 'multi-face') toast.warning('Peringatan: Terdeteksi lebih dari satu wajah!')
+})
+
+// Re-attach camera stream when returning from module transition modal.
+// NOTE: This watch is now a safety fallback only. The real fix is that
+// <main> is always mounted (transition is a fixed overlay), so srcObject
+// should never be lost. Keeping this as defensive code.
+watch(showingTransition, async (isShowing) => {
+  if (!isShowing && cameraStream.value && videoRef.value) {
+    await nextTick()
+    if (videoRef.value && !videoRef.value.srcObject) {
+      videoRef.value.srcObject = cameraStream.value
+      videoRef.value.play().catch(() => {})
+    }
+  }
 })
 
 watch(sessionEnded, async (ended) => {

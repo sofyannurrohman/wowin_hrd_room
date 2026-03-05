@@ -21,6 +21,11 @@ const router = createRouter({
       component: () => import('../pages/JoinPage.vue')
     },
     {
+      path: '/apply',
+      name: 'apply',
+      component: () => import('../pages/ApplicationPage.vue')
+    },
+    {
       path: '/camera-check',
       name: 'cameraCheck',
       component: () => import('../pages/CameraCheckPage.vue')
@@ -131,6 +136,16 @@ const router = createRouter({
           path: '/job-positions/create',
           name: 'jobPositionsCreate',
           component: () => import('../pages/job_positions/JobPositionCreatePage.vue')
+        },
+        {
+          path: '/settings',
+          name: 'settings',
+          component: () => import('../pages/dashboard/SettingsPage.vue')
+        },
+        {
+          path: '/support',
+          name: 'support',
+          component: () => import('../pages/dashboard/SupportPage.vue')
         },
         {
           path: '/job-positions/edit/:id',

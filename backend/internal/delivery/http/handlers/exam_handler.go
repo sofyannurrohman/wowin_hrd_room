@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -35,10 +36,10 @@ func NewExamHandler(examUC *usecase.ExamUseCase, sessionUC *usecase.SessionUseCa
 func (h *ExamHandler) Join(c *gin.Context) {
 	var req struct {
 		Token    string `json:"token" binding:"required"`
-		Name     string `json:"name" binding:"required"`
-		Email    string `json:"email" binding:"required,email"`
-		Age      int    `json:"age" binding:"required"`
-		Position string `json:"position" binding:"required"`
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Age      int    `json:"age"`
+		Position string `json:"position"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -51,6 +52,18 @@ func (h *ExamHandler) Join(c *gin.Context) {
 		return
 	}
 
+	// Frictionless Join: If token is bound to an email, bypass form data
+	if token.BoundEmail != nil && *token.BoundEmail != "" {
+		req.Email = *token.BoundEmail
+		// Name, Age, Position can be empty here; ExamUseCase will look up by Email.
+	} else {
+		// If no bound email, form data is strictly required
+		if req.Name == "" || req.Email == "" || req.Position == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "nama, email, dan posisi wajib diisi jika tidak menggunakan token khusus"})
+			return
+		}
+	}
+
 	participant, err := h.examUC.Join(c.Request.Context(), req.Name, req.Email, req.Age, req.Position, token, session)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -59,7 +72,7 @@ func (h *ExamHandler) Join(c *gin.Context) {
 
 	// Compute remaining time until session end for timer initialization
 	endTime := session.Schedule.Add(time.Duration(session.DurationMinutes) * time.Minute)
-	remaining := int(endTime.Sub(time.Now()).Seconds())
+	remaining := int(time.Until(endTime).Seconds())
 	if remaining < 0 {
 		remaining = 0
 	}
@@ -532,6 +545,128 @@ func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 
 	q, _ = h.qRepo.FindByID(c.Request.Context(), qID)
 	c.JSON(http.StatusOK, q)
+}
+
+// POST /api/questions/import
+func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file CSV tidak ditemukan"})
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	// Optionally handle different delimiters, though default is comma
+	records, err := reader.ReadAll()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "format CSV tidak valid"})
+		return
+	}
+
+	if len(records) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "CSV kosong atau tidak memiliki baris header/data"})
+		return
+	}
+
+	successCount := 0
+	errorCount := 0
+
+	// Skip header (row 0)
+	for i := 1; i < len(records); i++ {
+		row := records[i]
+		if len(row) < 3 { // Min required columns: content, type, module_id
+			errorCount++
+			continue
+		}
+
+		content := strings.TrimSpace(row[0])
+		if content == "" {
+			errorCount++
+			continue
+		}
+
+		qType := strings.TrimSpace(row[1])
+		if qType == "" {
+			qType = domain.QuestionTypeMultipleChoice
+		}
+
+		moduleIDStr := strings.TrimSpace(row[2])
+		var moduleID uuid.UUID
+		if moduleIDStr != "" {
+			parsedID, err := uuid.Parse(moduleIDStr)
+			if err == nil {
+				moduleID = parsedID
+			} else {
+				// We can try to match by name later, but for now ID only as per plan
+			}
+		}
+
+		// no Explanation field in domain.Question currently
+		// if len(row) > 9 {
+		// 	explanation = strings.TrimSpace(row[9])
+		// }
+
+		q := &domain.Question{
+			ID:                   uuid.New(),
+			Type:                 qType,
+			Content:              content,
+			ModuleID:             moduleID,
+			Weight:               1.0,
+			RequiresManualReview: qType == domain.QuestionTypePsychological || qType == domain.QuestionTypeShortAnswer,
+		}
+
+		if err := h.qRepo.Create(c.Request.Context(), q); err != nil {
+			errorCount++
+			continue
+		}
+
+		// Handle Options for multiple choice/select
+		if qType == domain.QuestionTypeMultipleChoice {
+			var correctAnswers []string
+			if len(row) > 8 {
+				correctAnsText := strings.ToUpper(strings.TrimSpace(row[8]))
+				correctAnswers = strings.Split(correctAnsText, ",")
+				for j, ca := range correctAnswers {
+					correctAnswers[j] = strings.TrimSpace(ca)
+				}
+			}
+
+			// Map A->3, B->4, C->5, D->6, E->7
+			optLabels := []string{"A", "B", "C", "D", "E"}
+			for j := 0; j < 5; j++ {
+				colIdx := 3 + j
+				if colIdx < len(row) {
+					optContent := strings.TrimSpace(row[colIdx])
+					if optContent != "" {
+						isCorrect := false
+						label := optLabels[j]
+						for _, ca := range correctAnswers {
+							if ca == label {
+								isCorrect = true
+								break
+							}
+						}
+						o := &domain.QuestionOption{
+							ID:         uuid.New(),
+							QuestionID: q.ID,
+							Content:    optContent,
+							IsCorrect:  isCorrect,
+						}
+						_ = h.qRepo.CreateOption(c.Request.Context(), o)
+					}
+				}
+			}
+		}
+
+		successCount++
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       fmt.Sprintf("Import selesai. Berhasil: %d, Gagal: %d", successCount, errorCount),
+		"success_count": successCount,
+		"error_count":   errorCount,
+	})
 }
 
 // DELETE /api/questions/:id

@@ -7,6 +7,7 @@ import (
 
 	"hrd_room/backend/internal/domain"
 	"hrd_room/backend/internal/repository"
+	"hrd_room/backend/pkg/email"
 	"hrd_room/backend/pkg/hasher"
 
 	"github.com/google/uuid"
@@ -17,10 +18,11 @@ type SessionUseCase struct {
 	moduleRepo  *repository.ModuleRepository
 	tokenRepo   *repository.TokenRepository
 	logRepo     *repository.LogRepository
+	emailSender email.Sender
 }
 
-func NewSessionUseCase(sr *repository.SessionRepository, mr *repository.ModuleRepository, tr *repository.TokenRepository, lr *repository.LogRepository) *SessionUseCase {
-	return &SessionUseCase{sessionRepo: sr, moduleRepo: mr, tokenRepo: tr, logRepo: lr}
+func NewSessionUseCase(sr *repository.SessionRepository, mr *repository.ModuleRepository, tr *repository.TokenRepository, lr *repository.LogRepository, es email.Sender) *SessionUseCase {
+	return &SessionUseCase{sessionRepo: sr, moduleRepo: mr, tokenRepo: tr, logRepo: lr, emailSender: es}
 }
 
 type CreateSessionRequest struct {
@@ -132,6 +134,20 @@ type GeneratedToken struct {
 }
 
 func (uc *SessionUseCase) GenerateTokens(ctx context.Context, sessionID uuid.UUID, req GenerateTokenRequest) ([]GeneratedToken, error) {
+	session, err := uc.sessionRepo.FindByID(ctx, sessionID)
+	if err != nil {
+		return nil, errors.New("sesi tidak ditemukan")
+	}
+
+	if session.IsLocked {
+		return nil, errors.New("tidak dapat generate token: sesi ujian sudah dikunci")
+	}
+
+	endTime := session.Schedule.Add(time.Duration(session.DurationMinutes) * time.Minute)
+	if time.Now().After(endTime) {
+		return nil, errors.New("tidak dapat generate token: sesi ujian sudah selesai")
+	}
+
 	if req.TokenType == "" {
 		req.TokenType = "single-use"
 	}
@@ -165,6 +181,23 @@ func (uc *SessionUseCase) GenerateTokens(ctx context.Context, sessionID uuid.UUI
 
 		if err := uc.tokenRepo.Create(ctx, t); err != nil {
 			return nil, err
+		}
+
+		// Email logic implemented here:
+		if t.BoundEmail != nil && *t.BoundEmail != "" {
+			session, _ := uc.sessionRepo.FindByID(ctx, sessionID) // We can err check silently
+			sessionName := "Ujian HRD"
+			if session != nil {
+				sessionName = session.Name
+			}
+
+			// Try to find the participant name. In our context this isn't strictly necessary for bare functionality,
+			// but could be enhanced. Using empty string or email for now until deeper user lookups.
+
+			// Build magic login link (change this frontend URL in production through env config)
+			loginURL := "http://localhost:3000/join"
+
+			go uc.emailSender.SendInvite(*t.BoundEmail, "Peserta", plain, sessionName, loginURL)
 		}
 
 		results = append(results, GeneratedToken{
@@ -205,6 +238,15 @@ func (uc *SessionUseCase) ValidateToken(ctx context.Context, plainToken string) 
 	session, err := uc.sessionRepo.FindByID(ctx, token.SessionID)
 	if err != nil {
 		return nil, nil, errors.New("sesi tidak ditemukan")
+	}
+
+	if time.Now().Before(session.Schedule) {
+		return nil, nil, errors.New("sesi ujian belum dimulai")
+	}
+
+	endTime := session.Schedule.Add(time.Duration(session.DurationMinutes) * time.Minute)
+	if time.Now().After(endTime) {
+		return nil, nil, errors.New("sesi ujian sudah selesai")
 	}
 
 	if session.IsLocked {

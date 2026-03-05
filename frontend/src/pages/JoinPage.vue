@@ -14,9 +14,9 @@
       <!-- Main Registration Form -->
       <Card class="col-span-1 md:col-span-2 shadow-sm border-0 rounded-2xl bg-white p-2">
         <CardHeader class="space-y-2 pb-6">
-          <CardTitle class="text-3xl font-extrabold tracking-tight text-slate-900">Registrasi Pendaftar</CardTitle>
+          <CardTitle class="text-3xl font-extrabold tracking-tight text-slate-900">Laman Ujian</CardTitle>
           <CardDescription class="text-base text-slate-500">
-            Silakan masukkan kode aktivasi Anda dan verifikasi detail pribadi Anda untuk memulai Test.
+            Silakan masukkan token ujian Anda untuk memulai Test.
           </CardDescription>
         </CardHeader>
         
@@ -24,7 +24,7 @@
           <!-- Activation Code Box -->
           <div class="bg-blue-50/50 rounded-xl p-5 border border-blue-100">
             <Label for="token" class="text-xs font-bold text-slate-700 tracking-wider mb-2 block uppercase">
-              KODE AKTIVASI <span class="text-red-500">*</span>
+              Token Ujian <span class="text-red-500">*</span>
             </Label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -33,7 +33,7 @@
               <Input 
                 id="token" 
                 v-model="form.token" 
-                placeholder="Masukkan kode (contoh. HR-2024-X)" 
+                placeholder="Masukkan kode (contoh. HPV6cfzDQUe...)" 
                 class="pl-10 h-12 border-blue-200 focus-visible:ring-blue-500 bg-white"
                 autocomplete="off"
               />
@@ -44,41 +44,7 @@
             </p>
           </div>
 
-          <!-- Personal Data Section -->
-          <div class="space-y-4">
-            <h3 class="text-lg font-bold text-slate-800 border-b pb-2">Data Pendaftar</h3>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div class="space-y-2">
-                <Label for="name" class="text-sm font-semibold text-slate-700 block text-left">Nama Lengkap</Label>
-                <Input id="name" v-model="form.name" placeholder="John Doe" class="h-11 bg-slate-50/50" />
-              </div>
-              
-              <div class="space-y-2">
-                <Label for="age" class="text-sm font-semibold text-slate-700 block text-left">Umur</Label>
-                <Input id="age" type="number" v-model="form.age" placeholder="25" class="h-11 bg-slate-50/50" />
-              </div>
 
-              <div class="space-y-2">
-                <Label for="email" class="text-sm font-semibold text-slate-700 block text-left">Email</Label>
-                <Input id="email" type="email" v-model="form.email" placeholder="john.doe@example.com" class="h-11 bg-slate-50/50" />
-              </div>
-
-              <div class="space-y-2">
-                <Label for="position" class="text-sm font-semibold text-slate-700 block text-left">Posisi yang dilamar</Label>
-                <Select v-model="form.position">
-                  <SelectTrigger class="w-full h-11 bg-slate-50/50 text-slate-500">
-                    <SelectValue placeholder="Select a position" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem v-for="pos in activePositions" :key="pos.id" :value="pos.name">{{ pos.name }}</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
 
           <Alert v-if="errorMsg" variant="destructive" class="bg-red-50 border-red-200">
             <AlertTitle>Gagal</AlertTitle>
@@ -178,26 +144,20 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useExamStore } from '@/stores/exam'
-import client from '@/api/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import viteLogo from '@/assets/vite.svg'
 
 const router = useRouter()
+const route = useRoute()
 const examStore = useExamStore()
+
+const frictionlessToken = computed(() => route.query.token as string | undefined)
 
 const form = ref({
   token: '',
@@ -209,37 +169,42 @@ const form = ref({
 
 const errorMsg = ref('')
 const loading = ref(false)
-const activePositions = ref<any[]>([])
 
 onMounted(async () => {
-  try {
-    const res = await client.get('/job-positions/active')
-    activePositions.value = res.data.positions || []
-  } catch (err) {
-    console.error('Failed to load active job positions', err)
+  // If token is in URL (Magic Link), try to join immediately
+  if (frictionlessToken.value) {
+    form.value.token = frictionlessToken.value
+    loading.value = true
+    try {
+      await examStore.joinExam({
+        token: frictionlessToken.value,
+        name: '', email: '', age: 0, position: ''
+      })
+      router.push('/camera-check')
+      return // Success! Skip loading job positions
+    } catch (err: any) {
+      errorMsg.value = err.response?.data?.error || 'Tautan Anda tidak valid atau token sudah kadaluarsa. Silakan isi form.'
+      loading.value = false
+    }
   }
 })
 
 const isFormValid = computed(() => {
-  return form.value.token.trim() !== '' &&
-         form.value.name.trim() !== '' &&
-         form.value.age !== '' &&
-         form.value.email.trim() !== '' &&
-         form.value.position !== ''
+  return form.value.token.trim() !== ''
 })
 
 const handleJoin = async () => {
-  if (!isFormValid.value) return
+  if (!isFormValid.value && !frictionlessToken.value) return
   
   errorMsg.value = ''
   loading.value = true
   try {
     const payload = {
       token: form.value.token.trim(),
-      name: form.value.name.trim(),
-      email: form.value.email.trim(),
-      age: parseInt(form.value.age as unknown as string),
-      position: form.value.position
+      name: '',
+      email: '',
+      age: 0,
+      position: ''
     }
     await examStore.joinExam(payload)
     router.push('/camera-check')

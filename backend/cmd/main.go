@@ -14,6 +14,7 @@ import (
 	"hrd_room/backend/internal/repository"
 	"hrd_room/backend/internal/usecase"
 	"hrd_room/backend/pkg/database"
+	"hrd_room/backend/pkg/email"
 	jwtpkg "hrd_room/backend/pkg/jwt"
 
 	"github.com/gin-contrib/cors"
@@ -61,8 +62,15 @@ func main() {
 	jobPositionRepo := repository.NewJobPositionRepository(db)
 
 	// Use cases
+	var emailSender email.Sender
+	if cfg.SMTPHost != "" {
+		emailSender = email.NewSMTPSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPFrom)
+	} else {
+		emailSender = email.NewMockSender()
+	}
+
 	authUC := usecase.NewAuthUseCase(userRepo, jwtManager)
-	sessionUC := usecase.NewSessionUseCase(sessionRepo, moduleRepo, tokenRepo, logRepo)
+	sessionUC := usecase.NewSessionUseCase(sessionRepo, moduleRepo, tokenRepo, logRepo, emailSender)
 	moduleUC := usecase.NewModuleUseCase(moduleRepo)
 	jobPositionUC := usecase.NewJobPositionUseCase(jobPositionRepo)
 	examUC := usecase.NewExamUseCase(participantRepo, answerRepo, resultRepo, questionRepo, moduleRepo, sessionRepo, tokenRepo, userRepo)
@@ -113,6 +121,7 @@ func main() {
 		{
 			auth.POST("/login", authH.Login)
 			auth.POST("/register", authH.Register)
+			auth.POST("/apply", authH.Apply)
 		}
 
 		// Public exam endpoints (participants have no JWT, identified by participant_id)
@@ -175,6 +184,7 @@ func main() {
 			hrRoutes.GET("questions", questionH.ListAll)
 			hrRoutes.GET("questions/:id", questionH.GetByID)
 			hrRoutes.POST("questions", questionH.Create)
+			hrRoutes.POST("questions/import", questionH.ImportCSV)
 			hrRoutes.PUT("questions/:id", questionH.Update)
 			hrRoutes.DELETE("questions/:id", questionH.Delete)
 
@@ -188,7 +198,8 @@ func main() {
 			hrRoutes.PUT("results/:id/review", examH.HRReview)
 			hrRoutes.POST("results/:id/finalize", examH.FinalizeScore)
 
-			// Participant user management (HR can update and delete participants)
+			// Participant user management (HR can import, update and delete participants)
+			hrRoutes.POST("participants/import", adminH.ImportParticipants)
 			hrRoutes.PUT("participants/:id", adminH.UpdateUser)
 			hrRoutes.DELETE("participants/:id", adminH.DeleteUser)
 		}

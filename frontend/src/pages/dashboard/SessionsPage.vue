@@ -8,11 +8,7 @@
       <div class="flex items-center gap-3 w-full md:w-auto">
         <div class="relative w-full md:w-[280px]">
           <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input 
-            v-model="searchQuery"
-            placeholder="Search sessions..." 
-            class="pl-9 h-10 border-slate-200 focus-visible:ring-blue-500 bg-white"
-          />
+          <Input v-model="searchQuery" placeholder="Search sessions..." class="pl-9 h-10 border-slate-200 focus-visible:ring-blue-500 bg-white" />
         </div>
         <Button class="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 whitespace-nowrap" @click="router.push('/sessions/create')">
           <PlusIcon class="w-4 h-4" /> Buat Sesi
@@ -21,14 +17,12 @@
     </div>
 
     <Card class="border border-slate-100 shadow-sm rounded-2xl bg-white overflow-hidden">
-      <!-- Filters Bar -->
       <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-4 w-full sm:w-auto">
           <div class="flex items-center gap-2">
             <FilterIcon class="w-4 h-4 text-slate-400" />
             <span class="text-sm font-semibold text-slate-600">Filter by:</span>
           </div>
-          
           <Select v-model="statusFilter">
             <SelectTrigger class="w-[160px] h-9 bg-white border-slate-200 text-sm">
               <SelectValue placeholder="All Statuses" />
@@ -42,15 +36,7 @@
               </SelectGroup>
             </SelectContent>
           </Select>
-
-          <div class="flex items-center bg-white border border-slate-200 rounded-md h-9 px-3 text-sm text-slate-500 w-full sm:w-auto">
-             <CalendarDaysIcon class="w-4 h-4 mr-2 opacity-50" />
-             <span>Start Date</span>
-             <span class="mx-2 text-slate-300">-</span>
-             <span>End Date</span>
-          </div>
         </div>
-
         <Button variant="ghost" size="sm" class="text-slate-500 hover:text-slate-800" @click="clearFilters">
           Clear Filters
         </Button>
@@ -60,7 +46,6 @@
         <TableHeader>
           <TableRow class="border-b border-slate-100 hover:bg-transparent">
             <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-6">Session Name</TableHead>
-            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Code</TableHead>
             <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Start Date</TableHead>
             <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">End Date</TableHead>
             <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4 text-center">Participants</TableHead>
@@ -72,20 +57,15 @@
           <TableRow v-for="s in filteredSessions" :key="s.id" class="border-b border-slate-100 transition-colors hover:bg-slate-50/50 group">
             <TableCell class="py-4 px-6">
               <div class="font-bold text-slate-800 text-sm">{{ s.name }}</div>
-              <div class="text-[13px] text-slate-500 mt-0.5">Technical Assessment</div>
-            </TableCell>
-            <TableCell class="py-4 px-4">
-              <div class="bg-slate-100 text-slate-600 text-[11px] font-bold px-2 py-1 rounded w-fit tracking-wider">
-                {{ getSessionCodeFromName(s.name) }}
-              </div>
+              <div class="text-[12px] text-slate-400 mt-0.5 font-mono">{{ s.id.slice(0, 8).toUpperCase() }}</div>
             </TableCell>
             <TableCell class="py-4 px-4 text-sm">
               <div class="text-slate-800 font-medium">{{ formatDateMonthDay(s.schedule) }}</div>
               <div class="text-slate-500 text-xs mt-0.5">{{ formatTime(s.schedule) }}</div>
             </TableCell>
             <TableCell class="py-4 px-4 text-sm">
-               <div class="text-slate-800 font-medium">{{ formatDateMonthDay(getEndDate(s)) }}</div>
-               <div class="text-slate-500 text-xs mt-0.5">{{ formatTime(getEndDate(s)) }}</div>
+              <div class="text-slate-800 font-medium">{{ formatDateMonthDay(getEndDate(s)) }}</div>
+              <div class="text-slate-500 text-xs mt-0.5">{{ formatTime(getEndDate(s)) }}</div>
             </TableCell>
             <TableCell class="py-4 px-4 text-center">
               <div class="inline-flex flex-col items-center">
@@ -106,56 +86,127 @@
                 <Button variant="ghost" size="icon" class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 h-8 w-8 rounded-full" @click="router.push(`/sessions/${s.id}`)">
                   <EyeIcon class="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="icon" class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 h-8 w-8 rounded-full" @click="router.push(`/sessions/${s.id}`)">
+                <Button variant="ghost" size="icon" class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 h-8 w-8 rounded-full" @click="openEditModal(s)">
                   <Edit2Icon class="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" class="text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 rounded-full" @click="confirmDelete(s)">
+                  <Trash2Icon class="w-4 h-4" />
                 </Button>
               </div>
             </TableCell>
           </TableRow>
-          
+
           <TableRow v-if="filteredSessions.length === 0">
-             <TableCell colspan="7" class="text-center h-48 text-slate-500">
-               <div class="flex flex-col items-center justify-center space-y-3">
-                  <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                    <SearchIcon class="w-6 h-6" />
-                  </div>
-                  <p>Tidak ada sesi yang dipadankan dengan pencarian.</p>
-               </div>
-             </TableCell>
+            <TableCell colspan="6" class="text-center h-48 text-slate-500">
+              <div class="flex flex-col items-center justify-center space-y-3">
+                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                  <SearchIcon class="w-6 h-6" />
+                </div>
+                <p>Tidak ada sesi yang dipadankan dengan pencarian.</p>
+              </div>
+            </TableCell>
           </TableRow>
         </TableBody>
       </Table>
-      
+
       <div v-if="filteredSessions.length > 0" class="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-slate-50/30">
-        <div>Showing <strong>1</strong> to <strong>{{ filteredSessions.length }}</strong> of <strong>{{ filteredSessions.length }}</strong> results</div>
-        <div class="flex gap-2">
-           <Button variant="outline" size="sm" class="h-8 border-slate-200 text-slate-600" disabled>Previous</Button>
-           <Button variant="outline" size="sm" class="h-8 border-slate-200 text-slate-600" disabled>Next</Button>
-        </div>
+        <div>Showing <strong>{{ filteredSessions.length }}</strong> results</div>
       </div>
     </Card>
+
+    <!-- ─── Edit Modal ─────────────────────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="editModal.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="editModal.open = false">
+        <div class="bg-white rounded-2xl shadow-xl p-8 max-w-lg w-full mx-4 space-y-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-bold text-slate-900">Edit Sesi</h2>
+            <button @click="editModal.open = false" class="text-slate-400 hover:text-slate-700">
+              <XIcon class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="space-y-4">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-slate-700">Nama Sesi</label>
+              <Input v-model="editForm.name" placeholder="Nama sesi" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-slate-700">Jadwal</label>
+                <Input v-model="editForm.schedule" type="datetime-local" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-slate-700">Durasi (menit)</label>
+                <Input v-model.number="editForm.duration_minutes" type="number" min="1" />
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-slate-700">Maks Peserta</label>
+              <Input v-model.number="editForm.max_participants" type="number" min="1" />
+            </div>
+            <div class="flex items-center gap-6">
+              <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input type="checkbox" v-model="editForm.randomize_questions" class="rounded" />
+                Acak Soal
+              </label>
+              <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input type="checkbox" v-model="editForm.show_score" class="rounded" />
+                Tampilkan Skor
+              </label>
+            </div>
+          </div>
+          <p v-if="editError" class="text-sm text-red-500">{{ editError }}</p>
+          <div class="flex justify-end gap-3 pt-2">
+            <Button variant="outline" @click="editModal.open = false">Batal</Button>
+            <Button :disabled="editModal.saving" @click="saveEdit" class="bg-blue-600 hover:bg-blue-700 text-white">
+              {{ editModal.saving ? 'Menyimpan...' : 'Simpan Perubahan' }}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ─── Delete Confirmation Dialog ────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="deleteDialog.open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="deleteDialog.open = false">
+        <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+          <div class="flex items-start gap-4 mb-6">
+            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Trash2Icon class="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Hapus Sesi</h2>
+              <p class="text-sm text-slate-500 mt-1">
+                Apakah Anda yakin ingin menghapus sesi <strong class="text-slate-800">{{ deleteDialog.session?.name }}</strong>?
+                Semua data terkait (token, jawaban, pelanggaran) akan ikut terhapus dan tidak bisa dikembalikan.
+              </p>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3">
+            <Button variant="outline" @click="deleteDialog.open = false">Batal</Button>
+            <Button :disabled="deleteDialog.deleting" @click="doDelete" class="bg-red-600 hover:bg-red-700 text-white">
+              {{ deleteDialog.deleting ? 'Menghapus...' : 'Ya, Hapus' }}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
+import { toast } from 'vue-sonner'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SearchIcon, PlusIcon, FilterIcon, CalendarDaysIcon, EyeIcon, Edit2Icon } from 'lucide-vue-next'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchIcon, PlusIcon, FilterIcon, EyeIcon, Edit2Icon, Trash2Icon, XIcon } from 'lucide-vue-next'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const router = useRouter()
 const sessionStore = useSessionStore()
@@ -171,12 +222,10 @@ const filteredSessions = computed(() => {
   return sessionStore.sessions.filter((s: any) => {
     const matchesSearch = s.name.toLowerCase().includes(searchQuery.value.toLowerCase())
     if (!matchesSearch) return false
-    
     if (statusFilter.value !== 'all') {
       const status = getStatusText(s).toLowerCase()
       if (status !== statusFilter.value) return false
     }
-    
     return true
   })
 })
@@ -186,25 +235,92 @@ const clearFilters = () => {
   statusFilter.value = 'all'
 }
 
+// ─── Edit Modal ───────────────────────────────────────────────────
+const editModal = reactive({ open: false, saving: false, sessionId: '' })
+const editError = ref('')
+const editForm = reactive({
+  name: '',
+  schedule: '',
+  duration_minutes: 60,
+  max_participants: 50,
+  randomize_questions: false,
+  show_score: true,
+})
+
+const toLocalDatetime = (iso: string) => {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const openEditModal = (session: any) => {
+  editModal.sessionId = session.id
+  editForm.name = session.name
+  editForm.schedule = toLocalDatetime(session.schedule)
+  editForm.duration_minutes = session.duration_minutes
+  editForm.max_participants = session.max_participants
+  editForm.randomize_questions = session.randomize_questions
+  editForm.show_score = session.show_score
+  editError.value = ''
+  editModal.open = true
+}
+
+const saveEdit = async () => {
+  if (!editForm.name.trim()) { editError.value = 'Nama sesi tidak boleh kosong.'; return }
+  editModal.saving = true
+  editError.value = ''
+  try {
+    await sessionStore.updateSession(editModal.sessionId, {
+      name: editForm.name,
+      schedule: new Date(editForm.schedule).toISOString(),
+      duration_minutes: editForm.duration_minutes,
+      max_participants: editForm.max_participants,
+      randomize_questions: editForm.randomize_questions,
+      show_score: editForm.show_score,
+    })
+    editModal.open = false
+    toast.success('Sesi berhasil diperbarui.')
+  } catch (e: any) {
+    editError.value = e?.response?.data?.error || 'Gagal memperbarui sesi.'
+  } finally {
+    editModal.saving = false
+  }
+}
+
+// ─── Delete Dialog ────────────────────────────────────────────────
+const deleteDialog = reactive({ open: false, deleting: false, session: null as any })
+
+const confirmDelete = (session: any) => {
+  deleteDialog.session = session
+  deleteDialog.open = true
+}
+
+const doDelete = async () => {
+  if (!deleteDialog.session) return
+  deleteDialog.deleting = true
+  try {
+    await sessionStore.deleteSession(deleteDialog.session.id)
+    deleteDialog.open = false
+    toast.success('Sesi berhasil dihapus.')
+  } catch (e: any) {
+    toast.error(e?.response?.data?.error || 'Gagal menghapus sesi.')
+  } finally {
+    deleteDialog.deleting = false
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────
 const getEndDate = (session: any) => {
   const start = new Date(session.schedule)
   return new Date(start.getTime() + session.duration_minutes * 60000).toISOString()
 }
 
 const formatDateMonthDay = (dateString: string) => {
-  const d = new Date(dateString)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 const formatTime = (dateString: string) => {
-  const d = new Date(dateString)
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-}
-
-const getSessionCodeFromName = (name: string) => {
-  const words = name.split(' ')
-  let code = words.map(w => w.charAt(0).toUpperCase()).join('')
-  return `${code}-2024`
+  return new Date(dateString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
 const getStatusText = (session: any) => {

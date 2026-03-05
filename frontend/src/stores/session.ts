@@ -15,9 +15,18 @@ export const useSessionStore = defineStore('session', {
       await client.post('/sessions', payload)
       await this.fetchSessions()
     },
+    async updateSession(id: string, payload: any) {
+      await client.put(`/sessions/${id}`, payload)
+      await this.fetchSessions()
+    },
+    async deleteSession(id: string) {
+      await client.delete(`/sessions/${id}`)
+      await this.fetchSessions()
+    },
     async fetchSessionDetails(id: string) {
       const res = await client.get(`/sessions/${id}`)
       this.currentSession = res.data
     }
   }
 })
+

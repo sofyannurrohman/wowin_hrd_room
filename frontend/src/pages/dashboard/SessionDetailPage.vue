@@ -56,9 +56,12 @@
           <AlertDescription>{{ alertMessage }}</AlertDescription>
         </Alert>
 
-        <div class="flex items-center gap-4 pb-4 border-b">
+        <div class="flex items-center gap-4 pb-4 border-b flex-wrap">
            <Input v-model.number="tokenCount" type="number" min="1" max="50" class="w-32" />
-           <Button @click="generateTokens" :disabled="generating">Generate Token Baru</Button>
+           <Button @click="generateTokens" :disabled="generating">Generate Token Acak</Button>
+           <Button variant="secondary" @click="openInviteModal" class="flex items-center gap-2">
+             <MailIcon class="w-4 h-4" /> Kirim Undangan via Email
+           </Button>
         </div>
         
         <Table>
@@ -85,6 +88,48 @@
         </Table>
       </CardContent>
     </Card>
+
+    <!-- Invite Participants Modal -->
+    <Teleport to="body">
+      <div v-if="showInviteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showInviteModal = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh]">
+          <div class="p-5 border-b flex items-center justify-between shrink-0">
+            <div>
+              <h3 class="text-xl font-bold text-slate-800">Undang Peserta ke Sesi</h3>
+              <p class="text-sm text-slate-500 mt-1">Pilih peserta untuk digenerate token dan dikirimkan Magic Link-nya via Email.</p>
+            </div>
+            <button @click="showInviteModal = false" class="text-slate-400 hover:bg-slate-100 rounded-full p-2">✕</button>
+          </div>
+          
+          <div class="p-5 overflow-y-auto flex-1 bg-slate-50 relative">
+            <div v-if="loadingParticipants" class="text-center py-10 text-slate-400">Memuat data peserta...</div>
+            <div v-else-if="allParticipants.length === 0" class="text-center py-10 text-slate-400">Tidak ada peserta tersedia. Tembahkan peserta di menu Participant Management.</div>
+            <div v-else class="space-y-2">
+              <label v-for="p in allParticipants" :key="p.id" class="flex items-center gap-4 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-blue-400 transition-colors">
+                <input type="checkbox" :value="p.id" v-model="selectedParticipantIds" class="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
+                <img :src="`https://api.dicebear.com/7.x/initials/svg?seed=${p.name || p.email}&backgroundColor=1e3a8a&textColor=ffffff`" class="w-10 h-10 rounded-full" />
+                <div class="flex-1">
+                  <div class="font-bold text-slate-800 text-sm">{{ p.name || '—' }}</div>
+                  <div class="text-xs text-slate-500">{{ p.email }}</div>
+                </div>
+                <Badge variant="outline" class="text-xs">{{ p.applied_position || 'Umum' }}</Badge>
+              </label>
+            </div>
+          </div>
+          
+          <div class="p-5 border-t bg-white flex justify-end gap-3 shrink-0">
+            <div class="flex-1 flex items-center text-sm text-slate-500 font-medium">
+              {{ selectedParticipantIds.length }} peserta dipilih
+            </div>
+            <Button variant="outline" class="rounded-xl" @click="showInviteModal = false">Batal</Button>
+            <Button class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold" @click="generateAndInvite" :disabled="inviting || selectedParticipantIds.length === 0">
+              {{ inviting ? 'Memproses...' : 'Kirim Undangan' }}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
   <div v-else class="text-center py-20 text-muted-foreground">Memuat detail sesi...</div>
 </template>
@@ -99,7 +144,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeftIcon, MonitorPlayIcon, FileTextIcon, ShieldAlertIcon, BarChart3Icon } from 'lucide-vue-next'
+import { ArrowLeftIcon, MonitorPlayIcon, FileTextIcon, ShieldAlertIcon, BarChart3Icon, MailIcon } from 'lucide-vue-next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const router = useRouter()
@@ -165,5 +210,64 @@ const generateTokens = async () => {
 const copy = (txt: string) => {
   navigator.clipboard.writeText(txt)
   showSuccess('Token tersalin ke clipboard')
+}
+
+// ─── Invite Logic ───────────────────────────────────────────────
+const showInviteModal = ref(false)
+const allParticipants = ref<any[]>([])
+const loadingParticipants = ref(false)
+const selectedParticipantIds = ref<string[]>([])
+const inviting = ref(false)
+
+const openInviteModal = async () => {
+  showInviteModal.value = true
+  selectedParticipantIds.value = []
+  loadingParticipants.value = true
+  try {
+    const res = await client.get('/participants')
+    allParticipants.value = res.data || []
+  } catch (err) {
+    showError('Gagal memuat list peserta')
+  } finally {
+    loadingParticipants.value = false
+  }
+}
+
+const generateAndInvite = async () => {
+  if (selectedParticipantIds.value.length === 0) return
+  inviting.value = true
+  
+  const selectedUsers = allParticipants.value.filter(p => selectedParticipantIds.value.includes(p.id))
+  let successCount = 0
+  let errorCount = 0
+  
+  const end_time = new Date(new Date(session.value.schedule).getTime() + session.value.duration_minutes * 60000).toISOString()
+  
+  for (const user of selectedUsers) {
+    try {
+      await client.post(`/sessions/${sessionId}/tokens`, {
+        count: 1,
+        max_usage: 1,
+        expires_at: end_time,
+        bound_email: user.email
+      })
+      successCount++
+      // In a real app, this is where the backend would send the email via SMTP/SendGrid.
+      // For now, the token is generated and bound to their email.
+    } catch (err) {
+      errorCount++
+    }
+  }
+  
+  inviting.value = false
+  showInviteModal.value = false
+  
+  if (successCount > 0) {
+    showSuccess(`Berhasil mengundang ${successCount} peserta via email.`)
+    await loadData() // Refresh token table
+  }
+  if (errorCount > 0) {
+    setTimeout(() => showError(`Gagal mengundang ${errorCount} peserta.`), 2000)
+  }
 }
 </script>

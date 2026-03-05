@@ -102,13 +102,14 @@
             Settings
           </RouterLink>
 
-          <a
-            href="#"
-            class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors group text-blue-100 hover:bg-white/10 hover:text-white"
+          <RouterLink
+            to="/support"
+            class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors group"
+            :class="$route.path.startsWith('/support') ? 'bg-blue-600/50 text-white' : 'text-blue-100 hover:bg-white/10 hover:text-white'"
           >
             <HelpCircleIcon class="w-5 h-5 opacity-80 group-hover:opacity-100" />
             Support
-          </a>
+          </RouterLink>
         </div>
       </nav>
 
@@ -154,7 +155,6 @@ import {
   FileQuestionIcon,
   UsersRoundIcon,
   BriefcaseIcon,
-  BarChart2Icon,
   SettingsIcon,
   HelpCircleIcon,
   ShieldCheckIcon,

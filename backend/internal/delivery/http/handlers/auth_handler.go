@@ -1,7 +1,14 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"hrd_room/backend/internal/domain"
@@ -85,4 +92,120 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		"email":   userEmail,
 		"role":    userRole,
 	})
+}
+
+// Apply handles public job applications (multipart/form-data)
+func (h *AuthHandler) Apply(c *gin.Context) {
+	// 1. Parse form
+	err := c.Request.ParseMultipartForm(10 << 20) // 10 MB limit
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form"})
+		return
+	}
+
+	name := c.Request.FormValue("name")
+	email := c.Request.FormValue("email")
+	ageStr := c.Request.FormValue("age")
+	position := c.Request.FormValue("applied_position")
+	expectedSalary := c.Request.FormValue("expected_salary")
+	address := c.Request.FormValue("address")
+	lastEdu := c.Request.FormValue("last_education")
+	whatsapp := c.Request.FormValue("whatsapp_number")
+
+	if name == "" || email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name and Email are required"})
+		return
+	}
+
+	var age *int
+	if ageStr != "" {
+		parsedAge, err := strconv.Atoi(ageStr)
+		if err == nil {
+			age = &parsedAge
+		}
+	}
+
+	var appliedPos *string
+	if position != "" {
+		appliedPos = &position
+	}
+
+	var expSalary *string
+	if expectedSalary != "" {
+		expSalary = &expectedSalary
+	}
+
+	var addr *string
+	if address != "" {
+		addr = &address
+	}
+
+	var edu *string
+	if lastEdu != "" {
+		edu = &lastEdu
+	}
+
+	var wa *string
+	if whatsapp != "" {
+		wa = &whatsapp
+	}
+
+	// 2. Handle CV Upload
+	var cvURL *string
+	file, header, err := c.Request.FormFile("cv")
+	if err == nil {
+		defer file.Close()
+
+		// Create uploads folder if it doesn't exist
+		uploadDir := "./uploads/cv"
+		os.MkdirAll(uploadDir, os.ModePerm)
+
+		// Generate unique filename
+		ext := filepath.Ext(header.Filename)
+		filename := fmt.Sprintf("%s-%s%s", strings.Split(email, "@")[0], hexEncodeRandom(4), ext)
+		dstPath := filepath.Join(uploadDir, filename)
+
+		out, err := os.Create(dstPath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save CV file"})
+			return
+		}
+		defer out.Close()
+		io.Copy(out, file)
+
+		url := fmt.Sprintf("/uploads/cv/%s", filename)
+		cvURL = &url
+	}
+
+	// 3. Generate Random Secure Password (users login via Magic Link anyway)
+	password := hexEncodeRandom(8)
+
+	req := usecase.RegisterRequest{
+		Name:            name,
+		Email:           email,
+		Password:        password,
+		RoleID:          3, // Peserta
+		Age:             age,
+		AppliedPosition: appliedPos,
+		ExpectedSalary:  expSalary,
+		Address:         addr,
+		LastEducation:   edu,
+		WhatsappNumber:  wa,
+		CvURL:           cvURL,
+	}
+
+	user, err := h.authUC.Register(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Application submitted successfully", "user_id": user.ID})
+}
+
+// helper
+func hexEncodeRandom(bytes int) string {
+	b := make([]byte, bytes)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }

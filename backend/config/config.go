@@ -21,6 +21,11 @@ type Config struct {
 	JWTExpiryHours int
 	UploadDir      string
 	MaxUploadMB    int64
+	SMTPHost       string
+	SMTPPort       string
+	SMTPUser       string
+	SMTPPassword   string
+	SMTPFrom       string
 }
 
 func Load() (*Config, error) {
@@ -41,6 +46,11 @@ func Load() (*Config, error) {
 		JWTExpiryHours: jwtExpiry,
 		UploadDir:      getEnv("UPLOAD_DIR", "./uploads"),
 		MaxUploadMB:    maxUpload,
+		SMTPHost:       getEnv("SMTP_HOST", ""),
+		SMTPPort:       getEnv("SMTP_PORT", "587"),
+		SMTPUser:       getEnv("SMTP_USER", ""),
+		SMTPPassword:   getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:       getEnv("SMTP_FROM", "hrd@noreply.com"),
 	}
 
 	cfg.DBURL = fmt.Sprintf(
