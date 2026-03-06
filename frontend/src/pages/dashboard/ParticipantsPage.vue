@@ -167,7 +167,7 @@
                   class="w-9 h-9 rounded-full shrink-0"
                 />
                 <div>
-                  <div class="font-bold text-slate-800 text-sm leading-none">{{ p.name || '—' }} <span v-if="p.age" class="text-xs text-slate-400 font-normal">({{p.age}} th)</span></div>
+                  <div @click="openDetail(p)" class="font-bold text-slate-800 text-sm leading-none cursor-pointer hover:text-blue-600 transition-colors">{{ p.name || '—' }} <span v-if="p.age" class="text-xs text-slate-400 font-normal">({{p.age}} th)</span></div>
                   <div class="text-[11px] text-blue-600 mt-1 font-semibold flex items-center gap-1">
                     {{ p.applied_position || 'Umum' }}
                     <span v-if="p.last_education" class="text-slate-400 text-[10px] ml-1 px-1.5 py-0.5 bg-blue-50 rounded-md">{{ p.last_education }}</span>
@@ -204,6 +204,9 @@
             </TableCell>
             <TableCell class="py-4 px-6 text-right">
               <div class="flex justify-end gap-1">
+                <Button variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700" @click="openDetail(p)" title="Detail">
+                  <EyeIcon class="w-3.5 h-3.5" />
+                </Button>
                 <Button v-if="p.cv_url" variant="ghost" size="icon" class="h-8 w-8 rounded-lg hover:bg-emerald-50 text-emerald-500 hover:text-emerald-700" @click="downloadCV(p.cv_url)" title="Unduh CV">
                   <DownloadIcon class="w-3.5 h-3.5" />
                 </Button>
@@ -305,6 +308,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import client from '@/api/client'
 
 import { Card, CardContent } from '@/components/ui/card'
@@ -314,8 +318,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   SearchIcon, UserPlusIcon, UsersIcon, UserCheckIcon,
   BarChart2Icon, ClockIcon, PencilIcon, Trash2Icon,
-  DownloadIcon, UploadIcon
+  DownloadIcon, UploadIcon, EyeIcon
 } from 'lucide-vue-next'
+
+const router = useRouter()
 
 // ─── Toast ────────────────────────────────────────────────────────
 const toast = ref({ show: false, type: 'success' as 'success' | 'error', message: '' })
@@ -442,6 +448,10 @@ const showModal = ref(false)
 const editingId = ref<string | null>(null)
 const form = ref({ name: '', email: '', password: '' })
 const saving = ref(false)
+
+const openDetail = (p: any) => {
+  router.push(`/participants/${p.id}`)
+}
 
 const openAdd = () => {
   editingId.value = null

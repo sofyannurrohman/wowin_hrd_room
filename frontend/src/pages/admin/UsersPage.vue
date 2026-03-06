@@ -7,11 +7,6 @@
       </Button>
     </div>
 
-    <Alert v-if="alertMessage" :variant="alertVariant">
-      <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
-      <AlertDescription>{{ alertMessage }}</AlertDescription>
-    </Alert>
-
     <Card>
       <Table>
         <TableHeader>
@@ -115,22 +110,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
 import { UserPlusIcon, TrashIcon, EditIcon } from 'lucide-vue-next'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 const users = ref<any[]>([])
 const showCreateDialog = ref(false)
 const creating = ref(false)
-const alertMessage = ref('')
-const alertVariant = ref<'default' | 'destructive'>('default')
 
 const showSuccess = (message: string) => {
-  alertVariant.value = 'default'
-  alertMessage.value = message
+  toast.success(message)
 }
 
 const showError = (message: string) => {
-  alertVariant.value = 'destructive'
-  alertMessage.value = message
+  toast.error(message)
 }
 
 const form = ref({

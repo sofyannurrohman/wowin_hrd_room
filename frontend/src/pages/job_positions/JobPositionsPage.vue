@@ -79,6 +79,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { PlusIcon, BriefcaseIcon, Edit2Icon, Trash2Icon, CalendarIcon } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import client from '@/api/client'
 
 interface JobPosition {
@@ -107,8 +108,9 @@ const deletePosition = async (id: string) => {
   try {
     await client.delete(`/job-positions/${id}`)
     positions.value = positions.value.filter((p: JobPosition) => p.id !== id)
-  } catch (error) {
-    alert('Gagal menghapus posisi')
+    toast.success('Posisi berhasil dihapus')
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Gagal menghapus posisi')
   }
 }
 

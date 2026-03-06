@@ -151,6 +151,7 @@ func main() {
 			// Dashboard & Global Participants
 			hrRoutes.GET("dashboard/stats", dashboardH.GetStats)
 			hrRoutes.GET("participants", dashboardH.ListParticipants)
+			hrRoutes.GET("participants/:id", dashboardH.GetParticipantDetail)
 
 			// Sessions
 			hrRoutes.GET("sessions", sessionH.List)

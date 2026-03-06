@@ -44,6 +44,7 @@
               <h3 class="font-semibold text-slate-900 truncate pr-4 text-lg">
                 {{ mod.name }}
               </h3>
+              <div class="text-xs text-slate-400 font-mono mt-0.5">ID: {{ mod.id }}</div>
               <div class="flex gap-2 shrink-0">
                 <RouterLink
                   :to="`/modules/edit/${mod.id}`"
@@ -78,6 +79,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { PlusIcon, LayersIcon, Edit2Icon, Trash2Icon, CalendarIcon } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import client from '@/api/client'
 
 interface Module {
@@ -106,8 +108,9 @@ const deleteModule = async (id: string) => {
   try {
     await client.delete(`/modules/${id}`)
     modules.value = modules.value.filter((m: Module) => m.id !== id)
-  } catch (error) {
-    alert('Failed to delete module')
+    toast.success('Modul berhasil dihapus')
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Gagal menghapus modul')
   }
 }
 

@@ -41,6 +41,21 @@ const router = createRouter({
       name: 'examFinished',
       component: () => import('../pages/ExamFinishedPage.vue')
     },
+    {
+      path: '/privacy-policy',
+      name: 'privacyPolicy',
+      component: () => import('../pages/PrivacyPolicyPage.vue')
+    },
+    {
+      path: '/terms-of-service',
+      name: 'termsOfService',
+      component: () => import('../pages/TermsOfServicePage.vue')
+    },
+    {
+      path: '/contact-support',
+      name: 'contactSupport',
+      component: () => import('../pages/ContactSupportPage.vue')
+    },
     // HR / Admin Dashboard
     {
       path: '/dashboard',
@@ -96,6 +111,11 @@ const router = createRouter({
           path: '/participants',
           name: 'participantsList',
           component: () => import('../pages/dashboard/ParticipantsPage.vue')
+        },
+        {
+          path: '/participants/:id',
+          name: 'participantDetail',
+          component: () => import('../pages/dashboard/ParticipantDetailPage.vue')
         },
         {
           path: '/modules',

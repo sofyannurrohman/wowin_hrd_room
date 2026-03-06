@@ -120,7 +120,7 @@
               </div>
               <div class="text-left">
                 <p class="text-xs text-slate-500">Butuh bantuan?</p>
-                <a href="#" class="text-sm font-semibold text-blue-600 hover:underline">Contact Support</a>
+                <RouterLink to="/contact-support" class="text-sm font-semibold text-blue-600 hover:underline">Contact Support</RouterLink>
               </div>
             </div>
           </CardContent>
@@ -135,8 +135,8 @@
         <p>All rights reserved.</p>
       </div>
       <div class="flex justify-center md:justify-end gap-6 font-medium">
-        <a href="#" class="hover:text-slate-800">Privacy Policy</a>
-        <a href="#" class="hover:text-slate-800">Terms of Service</a>
+        <RouterLink to="/privacy-policy" class="hover:text-slate-800">Privacy Policy</RouterLink>
+        <RouterLink to="/terms-of-service" class="hover:text-slate-800">Terms of Service</RouterLink>
       </div>
     </div>
   </div>

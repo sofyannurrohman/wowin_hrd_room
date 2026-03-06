@@ -42,7 +42,7 @@
           </div>
           <div class="text-4xl font-black text-slate-800 mb-4">{{ stats?.total_participants_today || 0 }}</div>
           <Badge variant="outline" class="text-slate-500 border-slate-200 px-2 py-0.5 text-xs font-semibold rounded shrink-0 w-fit">
-            <UserCheckIcon class="w-3 h-3 mr-1 inline-block" /> 12 Sedang Online
+            <UserCheckIcon class="w-3 h-3 mr-1 inline-block" /> {{ stats?.total_participants_today || 0 }} Telah masuk ke sistem
           </Badge>
         </CardContent>
       </Card>
@@ -50,14 +50,14 @@
       <Card class="border border-slate-100 shadow-sm rounded-2xl bg-white overflow-hidden transition-all hover:shadow-md">
         <CardContent class="p-6">
           <div class="flex justify-between items-start mb-4">
-            <h3 class="font-medium text-slate-500">Pelanggaran Terbaru</h3>
-            <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
-              <ShieldAlertIcon class="w-5 h-5" />
+            <h3 class="font-medium text-slate-500">Total Pelamar/Participant</h3>
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <UsersIcon class="w-5 h-5" />
             </div>
           </div>
-          <div class="text-4xl font-black text-slate-800 mb-4">{{ stats?.recent_violations || 0 }}</div>
-          <Badge variant="secondary" class="bg-red-50 text-red-600 hover:bg-red-50 px-2 py-0.5 text-xs font-semibold rounded shrink-0 w-fit border border-red-100">
-            <AlertCircleIcon class="w-3 h-3 mr-1 inline-block" /> Perlu Review
+          <div class="text-4xl font-black text-slate-800 mb-4">{{ stats?.total_participants || 0 }}</div>
+          <Badge variant="secondary" class="bg-emerald-50 text-emerald-600 hover:bg-emerald-50 px-2 py-0.5 text-xs font-semibold rounded shrink-0 w-fit border border-emerald-100">
+            <TrendingUpIcon class="w-3 h-3 mr-1 inline-block" /> Data Keseluruhan
           </Badge>
         </CardContent>
       </Card>
@@ -180,8 +180,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { 
-  BellIcon, PlusIcon, MonitorIcon, UsersIcon, ShieldAlertIcon,
-  TrendingUpIcon, UserCheckIcon, AlertCircleIcon, EyeIcon,
+  BellIcon, PlusIcon, MonitorIcon, UsersIcon,
+  TrendingUpIcon, UserCheckIcon, EyeIcon,
   ChevronRightIcon, FileTextIcon, KeyIcon
 } from 'lucide-vue-next'
 

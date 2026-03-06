@@ -35,3 +35,20 @@ func (h *DashboardHandler) ListParticipants(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, participants)
 }
+
+// GET /api/participants/:id
+func (h *DashboardHandler) GetParticipantDetail(c *gin.Context) {
+	participantID := c.Param("id")
+	if participantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id parameter is missing"})
+		return
+	}
+
+	detail, err := h.dashboardRepo.GetParticipantDetail(c.Request.Context(), participantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, detail)
+}

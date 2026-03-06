@@ -87,3 +87,81 @@ func (r *DashboardRepository) ListParticipants(ctx context.Context) ([]Participa
 	}
 	return list, nil
 }
+
+func (r *DashboardRepository) GetParticipantDetail(ctx context.Context, userID string) (map[string]interface{}, error) {
+	var p struct {
+		ID              string  `json:"id"`
+		Name            string  `json:"name"`
+		Email           string  `json:"email"`
+		Age             *int    `json:"age"`
+		AppliedPosition *string `json:"applied_position"`
+		Address         *string `json:"address"`
+		LastEducation   *string `json:"last_education"`
+		WhatsappNumber  *string `json:"whatsapp_number"`
+		CvURL           *string `json:"cv_url"`
+		ExpectedSalary  *string `json:"expected_salary"`
+	}
+
+	err := r.db.QueryRow(ctx, `
+		SELECT CAST(id AS TEXT), name, email, age, applied_position, address, last_education, whatsapp_number, cv_url, expected_salary
+		FROM users WHERE id = $1 AND role_id = 3
+	`, userID).Scan(&p.ID, &p.Name, &p.Email, &p.Age, &p.AppliedPosition, &p.Address, &p.LastEducation, &p.WhatsappNumber, &p.CvURL, &p.ExpectedSalary)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := r.db.Query(ctx, `
+		SELECT 
+			s.name as session_name,
+			s.schedule,
+			sp.status as participant_status,
+			r.total_score,
+			CAST(r.id AS TEXT) as result_id,
+            CAST(s.id AS TEXT) as session_id,
+			CAST(sp.id AS TEXT) as participant_id
+		FROM session_participants sp
+		JOIN sessions s ON sp.session_id = s.id
+		LEFT JOIN results r ON sp.id = r.participant_id
+		WHERE sp.user_id = $1
+		ORDER BY s.schedule DESC
+	`, userID)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []map[string]interface{}
+	for rows.Next() {
+		var sessionName string
+		var schedule time.Time
+		var status string
+		var score *float64
+		var resultID *string
+		var sessionID string
+		var participantID string
+
+		if err := rows.Scan(&sessionName, &schedule, &status, &score, &resultID, &sessionID, &participantID); err != nil {
+			return nil, err
+		}
+
+		history = append(history, map[string]interface{}{
+			"session_name":   sessionName,
+			"schedule":       schedule,
+			"status":         status,
+			"score":          score,
+			"result_id":      resultID,
+			"session_id":     sessionID,
+			"participant_id": participantID,
+		})
+	}
+	if history == nil {
+		history = []map[string]interface{}{}
+	}
+
+	return map[string]interface{}{
+		"profile": p,
+		"history": history,
+	}, nil
+}

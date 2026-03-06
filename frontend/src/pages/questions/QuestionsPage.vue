@@ -12,11 +12,6 @@
       </div>
     </div>
 
-    <Alert v-if="alertMessage" :variant="alertVariant">
-      <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
-      <AlertDescription>{{ alertMessage }}</AlertDescription>
-    </Alert>
-
     <Dialog v-model:open="isImportModalOpen">
       <DialogContent>
         <DialogHeader>
@@ -101,7 +96,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { PlusIcon, EditIcon, TrashIcon, UploadIcon, DownloadIcon } from 'lucide-vue-next'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { toast } from 'vue-sonner'
 import {
   Dialog,
   DialogContent,
@@ -114,27 +109,22 @@ import {
 const router = useRouter()
 const questions = ref<any[]>([])
 const modules = ref<any[]>([])
-const alertMessage = ref('')
-const alertVariant = ref<'default' | 'destructive'>('default')
-
 const isImportModalOpen = ref(false)
 const importFile = ref<File | null>(null)
 const isImporting = ref(false)
 
 const showSuccess = (message: string) => {
-  alertVariant.value = 'default'
-  alertMessage.value = message
+  toast.success(message)
 }
 
 const showError = (message: string) => {
-  alertVariant.value = 'destructive'
-  alertMessage.value = message
+  toast.error(message)
 }
 
 const handleFileChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    importFile.value = target.files[0]
+    importFile.value = target.files[0] as File
   }
 }
 

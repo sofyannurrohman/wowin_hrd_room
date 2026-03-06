@@ -19,7 +19,7 @@
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{{ errorMsg }}</AlertDescription>
         </Alert>
-        <Button class="w-full" @click="handleLogin" :disabled="loading">
+        <Button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold" @click="handleLogin" :disabled="loading">
           {{ loading ? 'Signing in...' : 'Sign In' }}
         </Button>
       </CardContent>
