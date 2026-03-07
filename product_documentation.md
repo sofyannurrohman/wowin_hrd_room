@@ -122,4 +122,4 @@ This section outlines the complete journey from initial HR setup to the final gr
 
 **Step 6: Final Review & Export**
 - HR reviews the final accumulated scores and checks the **Violations** tab for any suspicious behavior during the session.
-- Once finalized, HR can use the **CSV Export** feature to download the results for final decision-making or payroll processing.
+- Once finalized, HR can use the **CSV Export** feature to download the results for final decision-making.

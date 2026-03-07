@@ -70,52 +70,52 @@ const router = createRouter({
         {
           path: '/sessions',
           name: 'sessionsList',
-          component: () => import('../pages/dashboard/SessionsPage.vue')
+          component: () => import('../pages/sessions/SessionsPage.vue')
         },
         {
           path: '/sessions/create',
           name: 'sessionCreate',
-          component: () => import('../pages/dashboard/SessionCreatePage.vue')
+          component: () => import('../pages/sessions/SessionCreatePage.vue')
         },
         {
           path: '/sessions/:id',
           name: 'sessionDetail',
-          component: () => import('../pages/dashboard/SessionDetailPage.vue')
+          component: () => import('../pages/sessions/SessionDetailPage.vue')
         },
         {
           path: '/sessions/:id/monitor',
           name: 'sessionMonitor',
-          component: () => import('../pages/dashboard/SessionMonitorPage.vue')
+          component: () => import('../pages/sessions/SessionMonitorPage.vue')
         },
         {
           path: '/sessions/:id/results',
           name: 'sessionResults',
-          component: () => import('../pages/dashboard/SessionResultsPage.vue')
+          component: () => import('../pages/sessions/SessionResultsPage.vue')
         },
         {
           path: '/sessions/:id/violations',
           name: 'sessionViolations',
-          component: () => import('../pages/dashboard/SessionViolationsPage.vue')
+          component: () => import('../pages/sessions/SessionViolationsPage.vue')
         },
         {
           path: '/sessions/:id/analytics',
           name: 'sessionAnalytics',
-          component: () => import('../pages/dashboard/SessionAnalyticsPage.vue')
+          component: () => import('../pages/sessions/SessionAnalyticsPage.vue')
         },
         {
           path: '/sessions/:id/results/:participantId/answers',
           name: 'participantAnswers',
-          component: () => import('../pages/dashboard/ParticipantAnswersPage.vue')
+          component: () => import('../pages/participants/ParticipantAnswersPage.vue')
         },
         {
           path: '/participants',
           name: 'participantsList',
-          component: () => import('../pages/dashboard/ParticipantsPage.vue')
+          component: () => import('../pages/participants/ParticipantsPage.vue')
         },
         {
           path: '/participants/:id',
           name: 'participantDetail',
-          component: () => import('../pages/dashboard/ParticipantDetailPage.vue')
+          component: () => import('../pages/participants/ParticipantDetailPage.vue')
         },
         {
           path: '/modules',
