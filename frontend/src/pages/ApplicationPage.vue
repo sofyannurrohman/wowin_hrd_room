@@ -19,6 +19,12 @@
     <div v-else class="max-w-2xl w-full bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
       <!-- Header -->
       <div class="bg-blue-600 p-8 text-center relative overflow-hidden">
+        <div class="absolute top-4 left-4 z-20">
+          <Button variant="ghost" class="text-white hover:bg-white/10" @click="() => $router.push('/join')">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Kembali
+          </Button>
+        </div>
         <div class="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-700 opacity-90 leading-none"></div>
         <div class="relative z-10 flex flex-col items-center">
           <div class="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4">

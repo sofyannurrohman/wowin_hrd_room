@@ -59,6 +59,18 @@
             {{ loading ? 'Memverifikasi...' : 'Mulai Test Sekarang' }}
             <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
           </Button>
+
+          <div class="pt-6 mt-2 border-t border-slate-100">
+            <p class="text-sm text-center text-slate-500 mb-4 font-medium">Belum memiliki token atau belum melamar?</p>
+            <Button 
+              variant="outline"
+              class="w-full h-12 text-sm border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 rounded-xl transition-all flex items-center justify-center gap-2 font-semibold" 
+              @click="router.push('/apply')" 
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Lamar Pekerjaan Sekarang
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

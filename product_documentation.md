@@ -27,7 +27,6 @@ The application is pre-configured with a `docker-compose.yml` file that orchestr
 3. Once the containers are up and running, you can access:
    - **Frontend (Web App):** `http://localhost:3000`
    - **Backend API:** `http://localhost:8080`
-   - **MailHog (Email Testing UI):** `http://localhost:8025`
 
 *(Note: The database runs on port `5433` on the host machine and `5432` internally).*
 

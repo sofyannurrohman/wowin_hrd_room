@@ -37,11 +37,11 @@ services:
       JWT_EXPIRY_HOURS: 24
       UPLOAD_DIR: /app/uploads
       MAX_UPLOAD_SIZE_MB: 10
-      SMTP_HOST: "mailhog" 
-      SMTP_PORT: "1025"
-      SMTP_USER: ""
-      SMTP_PASSWORD: ""
-      SMTP_FROM: "hrd@noreply.com"
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: "587"
+      SMTP_USER: "sofyannurrohman1@gmail.com"
+      SMTP_PASSWORD: "fmqffjnpcvzeryyi"
+      SMTP_FROM: "sofyannurrohman1@gmail.com"
     volumes:
       - uploads_data:/app/uploads
 
@@ -65,12 +65,6 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - uploads_data:/app/uploads:ro
 
-  mailhog:
-    image: mailhog/mailhog
-    restart: always
-    ports:
-      - "8025:8025" # Web UI
-      - "1025:1025" # SMTP server
 
 volumes:
   postgres_data:
