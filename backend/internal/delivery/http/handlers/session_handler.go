@@ -150,7 +150,7 @@ func (h *SessionHandler) GenerateTokens(c *gin.Context) {
 
 	tokens, err := h.sessionUC.GenerateTokens(c.Request.Context(), sessionID, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"tokens": tokens})

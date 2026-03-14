@@ -101,10 +101,10 @@ type SessionModule struct {
 // ─── Question ────────────────────────────────────────────────────────────────
 
 const (
-	QuestionTypeMultipleChoice = "Multiple Choice"
-	QuestionTypeTrueFalse      = "True/False"
-	QuestionTypeShortAnswer    = "Short Answer"
-	QuestionTypePsychological  = "Psychological"
+	QuestionTypeMultipleChoice = "multiple_choice"
+	QuestionTypeTrueFalse      = "true_false"
+	QuestionTypeShortAnswer    = "short_answer"
+	QuestionTypePsychological  = "psychological"
 )
 
 type Question struct {

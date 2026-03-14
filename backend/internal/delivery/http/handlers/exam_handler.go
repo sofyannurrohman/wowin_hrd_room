@@ -359,7 +359,7 @@ func NewQuestionHTTPHandler(qRepo *repository.QuestionRepository, uploadDir stri
 func (h *QuestionHTTPHandler) Create(c *gin.Context) {
 	// Handle multipart for file uploads
 	moduleIDStr := c.PostForm("module_id")
-	qType := c.PostForm("type")
+	qType := normalizeQuestionType(c.PostForm("type"))
 	content := c.PostForm("content")
 
 	if moduleIDStr == "" || qType == "" || content == "" {
@@ -423,7 +423,7 @@ func (h *QuestionHTTPHandler) Create(c *gin.Context) {
 			Content   string `json:"content"`
 			IsCorrect bool   `json:"is_correct"`
 		}
-		if err := (&gin.Context{}).ShouldBindJSON(&options); err == nil {
+		if err := json.Unmarshal([]byte(optionsJSON), &options); err == nil {
 			for _, opt := range options {
 				o := &domain.QuestionOption{
 					ID:         uuid.New(),
@@ -495,7 +495,7 @@ func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 	}
 
 	if t := c.PostForm("type"); t != "" {
-		q.Type = t
+		q.Type = normalizeQuestionType(t)
 	}
 	if content := c.PostForm("content"); content != "" {
 		q.Content = content
@@ -586,10 +586,8 @@ func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
 			continue
 		}
 
-		qType := strings.TrimSpace(row[1])
-		if qType == "" {
-			qType = domain.QuestionTypeMultipleChoice
-		}
+		qType := normalizeQuestionType(row[1])
+
 
 		moduleIDStr := strings.TrimSpace(row[2])
 		var moduleID uuid.UUID
@@ -621,19 +619,26 @@ func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
 			continue
 		}
 
-		// Handle Options for multiple choice/select
-		if qType == domain.QuestionTypeMultipleChoice {
+		// Handle Options for multiple choice/select/true-false/short-answer
+		if qType == domain.QuestionTypeMultipleChoice || qType == domain.QuestionTypeTrueFalse || qType == domain.QuestionTypeShortAnswer {
 			var correctAnswers []string
 			if len(row) > 8 {
-				correctAnsText := strings.ToUpper(strings.TrimSpace(row[8]))
-				correctAnswers = strings.Split(correctAnsText, ",")
-				for j, ca := range correctAnswers {
-					correctAnswers[j] = strings.TrimSpace(ca)
+				correctAnsText := strings.TrimSpace(row[8])
+				if qType == domain.QuestionTypeMultipleChoice {
+					// For MCQ, we expect labels like A, B, C or A,B
+					correctAnswers = strings.Split(strings.ToUpper(correctAnsText), ",")
+					for j, ca := range correctAnswers {
+						correctAnswers[j] = strings.TrimSpace(ca)
+					}
+				} else {
+					// For other types, the text itself is the correct answer
+					correctAnswers = []string{correctAnsText}
 				}
 			}
 
 			// Map A->3, B->4, C->5, D->6, E->7
 			optLabels := []string{"A", "B", "C", "D", "E"}
+			optionCreated := false
 			for j := 0; j < 5; j++ {
 				colIdx := 3 + j
 				if colIdx < len(row) {
@@ -642,7 +647,7 @@ func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
 						isCorrect := false
 						label := optLabels[j]
 						for _, ca := range correctAnswers {
-							if ca == label {
+							if ca == label || strings.EqualFold(ca, optContent) {
 								isCorrect = true
 								break
 							}
@@ -654,8 +659,21 @@ func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
 							IsCorrect:  isCorrect,
 						}
 						_ = h.qRepo.CreateOption(c.Request.Context(), o)
+						optionCreated = true
 					}
 				}
+			}
+
+			// Special case: if no options were provided in columns A-E, 
+			// use the correct_answer_text as the single correct option (common for short_answer/true_false)
+			if !optionCreated && len(correctAnswers) > 0 && correctAnswers[0] != "" {
+				o := &domain.QuestionOption{
+					ID:         uuid.New(),
+					QuestionID: q.ID,
+					Content:    correctAnswers[0],
+					IsCorrect:  true,
+				}
+				_ = h.qRepo.CreateOption(c.Request.Context(), o)
 			}
 		}
 
@@ -682,3 +700,19 @@ func (h *QuestionHTTPHandler) Delete(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "soal berhasil dihapus"})
 }
+
+func normalizeQuestionType(t string) string {
+	switch strings.ToLower(strings.TrimSpace(t)) {
+	case "multiple_choice", "multiple choice", "pilihan ganda", "":
+		return domain.QuestionTypeMultipleChoice
+	case "true_false", "true/false", "benar/salah", "benar salah":
+		return domain.QuestionTypeTrueFalse
+	case "short_answer", "short answer", "isian singkat":
+		return domain.QuestionTypeShortAnswer
+	case "psychological", "essay", "esay", "psikologi":
+		return domain.QuestionTypePsychological
+	default:
+		return t
+	}
+}
+
