@@ -29,6 +29,7 @@ func (uc *ModuleUseCase) UpdateModule(ctx context.Context, id uuid.UUID, m *doma
 	}
 	current.Name = m.Name
 	current.Description = m.Description
+	current.TotalWeight = m.TotalWeight
 	return uc.repo.Update(ctx, current)
 }
 
