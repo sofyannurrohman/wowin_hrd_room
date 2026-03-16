@@ -11,6 +11,7 @@ import (
 type Config struct {
 	AppPort        string
 	AppEnv         string
+	AppBaseURL     string
 	DBHost         string
 	DBPort         string
 	DBUser         string
@@ -37,6 +38,7 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		AppPort:        getEnv("APP_PORT", "8080"),
 		AppEnv:         getEnv("APP_ENV", "development"),
+		AppBaseURL:     getEnv("APP_BASE_URL", "https://hrd-room.wowinapps.cloud"),
 		DBHost:         getEnv("DB_HOST", "localhost"),
 		DBPort:         getEnv("DB_PORT", "5432"),
 		DBUser:         getEnv("DB_USER", "hrd_user"),

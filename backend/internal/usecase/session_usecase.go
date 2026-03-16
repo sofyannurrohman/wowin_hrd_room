@@ -19,10 +19,11 @@ type SessionUseCase struct {
 	tokenRepo   *repository.TokenRepository
 	logRepo     *repository.LogRepository
 	emailSender email.Sender
+	baseURL     string
 }
 
-func NewSessionUseCase(sr *repository.SessionRepository, mr *repository.ModuleRepository, tr *repository.TokenRepository, lr *repository.LogRepository, es email.Sender) *SessionUseCase {
-	return &SessionUseCase{sessionRepo: sr, moduleRepo: mr, tokenRepo: tr, logRepo: lr, emailSender: es}
+func NewSessionUseCase(sr *repository.SessionRepository, mr *repository.ModuleRepository, tr *repository.TokenRepository, lr *repository.LogRepository, es email.Sender, baseURL string) *SessionUseCase {
+	return &SessionUseCase{sessionRepo: sr, moduleRepo: mr, tokenRepo: tr, logRepo: lr, emailSender: es, baseURL: baseURL}
 }
 
 type CreateSessionRequest struct {
@@ -198,8 +199,8 @@ func (uc *SessionUseCase) GenerateTokens(ctx context.Context, sessionID uuid.UUI
 			// Try to find the participant name. In our context this isn't strictly necessary for bare functionality,
 			// but could be enhanced. Using empty string or email for now until deeper user lookups.
 
-			// Build magic login link (change this frontend URL in production through env config)
-			loginURL := "http://localhost:3000/join"
+			// Build magic login link — reads APP_BASE_URL env var (defaults to production domain)
+			loginURL := uc.baseURL + "/join"
 
 			go uc.emailSender.SendInvite(*t.BoundEmail, "Peserta", plain, sessionName, loginURL)
 		}

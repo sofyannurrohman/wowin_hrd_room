@@ -75,7 +75,7 @@ func main() {
 	}
 
 	authUC := usecase.NewAuthUseCase(userRepo, jwtManager)
-	sessionUC := usecase.NewSessionUseCase(sessionRepo, moduleRepo, tokenRepo, logRepo, emailSender)
+	sessionUC := usecase.NewSessionUseCase(sessionRepo, moduleRepo, tokenRepo, logRepo, emailSender, cfg.AppBaseURL)
 	moduleUC := usecase.NewModuleUseCase(moduleRepo)
 	jobPositionUC := usecase.NewJobPositionUseCase(jobPositionRepo)
 	examUC := usecase.NewExamUseCase(participantRepo, answerRepo, resultRepo, questionRepo, moduleRepo, sessionRepo, tokenRepo, userRepo)
