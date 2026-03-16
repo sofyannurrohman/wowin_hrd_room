@@ -17,11 +17,29 @@ FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Update default nginx config to fallback to index.html for Vue Router history mode
+# index.html must NEVER be cached so the browser always gets the latest chunk hashes
 RUN echo "server { \
     listen 80; \
+    root /usr/share/nginx/html; \
+    index index.html index.htm; \
+    \
+    # Hashed assets (JS/CSS chunks) — cache forever, they are content-addressed \
+    location ~* \\.(?:js|css)\$ { \
+        expires 1y; \
+        add_header Cache-Control \"public, immutable\"; \
+        try_files \$uri =404; \
+    } \
+    \
+    # index.html — never cache so new deployments are picked up immediately \
+    location = /index.html { \
+        add_header Cache-Control \"no-cache, no-store, must-revalidate\"; \
+        add_header Pragma \"no-cache\"; \
+        add_header Expires 0; \
+        try_files \$uri =404; \
+    } \
+    \
+    # SPA fallback for all other routes \
     location / { \
-        root /usr/share/nginx/html; \
-        index index.html index.htm; \
         try_files \$uri \$uri/ /index.html; \
     } \
 }" > /etc/nginx/conf.d/default.conf

@@ -54,7 +54,7 @@
         
         <CardContent class="py-4">
           <!-- Text Answer -->
-          <div v-if="['Short Answer', 'Psychological', 'short_answer', 'essay'].includes(ans.question?.type)">
+          <div v-if="['Short Answer', 'Psychological', 'short_answer', 'essay', 'psychological'].includes(ans.question?.type)">
             <div class="mb-4">
               <Label class="text-xs text-slate-500 mb-1 block">Kunci Jawaban / Referensi:</Label>
               <div class="p-3 bg-blue-50/50 rounded-lg border border-blue-100 text-sm text-slate-700 whitespace-pre-wrap">
@@ -84,7 +84,7 @@
           </div>
 
           <!-- HR Notes & Manual Scoring -->
-          <div v-if="ans.question?.requires_manual_review && reviewData[ans.id]" class="mt-6 pt-4 border-t border-slate-100 space-y-4">
+          <div v-if="ans.question?.requires_manual_review && (ans.id in reviewData)" class="mt-6 pt-4 border-t border-slate-100 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div class="md:col-span-3 space-y-2">
                 <Label class="text-xs text-slate-500">Catatan HR (Opsional)</Label>
@@ -228,6 +228,7 @@ const getTypeColor = (type: string) => {
     case 'short_answer':
       return 'bg-amber-100 text-amber-700 border-amber-200'
     case 'Psychological':
+    case 'psychological':
     case 'essay':
       return 'bg-teal-100 text-teal-700 border-teal-200'
     default: return 'bg-slate-100 text-slate-700 border-slate-200'
