@@ -95,6 +95,17 @@ func (h *SessionHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
 		return
 	}
+
+	// Notify all active participants via WebSocket BEFORE deleting,
+	// so their ExamPage auto-submits answers and redirects to /exam-finished.
+	if h.wsHub != nil {
+		h.wsHub.BroadcastToSessionAll(id.String(), ws.Message{
+			Type:      ws.MsgTypeSessionEnd,
+			SessionID: id.String(),
+			Timestamp: time.Now(),
+		})
+	}
+
 	if err := h.sessionUC.Delete(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
