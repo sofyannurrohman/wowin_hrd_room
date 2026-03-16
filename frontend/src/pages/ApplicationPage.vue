@@ -132,7 +132,7 @@
                 <div class="text-sm font-semibold" :class="cvFile ? 'text-blue-700' : 'text-slate-600'">
                   {{ cvFile ? cvFile.name : 'Klik atau Tarik File CV ke Sini' }}
                 </div>
-                <div class="text-xs text-slate-400 mt-1">Format PDF, maksimal 10MB</div>
+                <div class="text-xs text-slate-400 mt-1">Format PDF, maksimal 1MB</div>
               </div>
             </div>
           </div>
