@@ -209,6 +209,23 @@ func (h *ExamHandler) GetParticipantAnswersPublic(c *gin.Context) {
 	c.JSON(http.StatusOK, answers)
 }
 
+// GET /api/exam/participant/:participantId/status
+// Public endpoint used by the frontend router guard to check if a stored participantId
+// is still active before resuming an exam session (prevents blank page on stale localStorage).
+func (h *ExamHandler) GetParticipantStatus(c *gin.Context) {
+	participantID, err := uuid.Parse(c.Param("participantId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid participant id"})
+		return
+	}
+	participant, err := h.examUC.GetParticipantByID(c.Request.Context(), participantID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "participant not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": participant.Status})
+}
+
 // GET /api/sessions/:id/results
 func (h *ExamHandler) GetResults(c *gin.Context) {
 	sessionID, err := uuid.Parse(c.Param("id"))

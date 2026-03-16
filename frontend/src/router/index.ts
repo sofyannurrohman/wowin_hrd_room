@@ -207,12 +207,29 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   // ─── Exam session guard ──────────────────────────────────────────────────
-  // If user has an active exam session, redirect /join back to the exam
+  // If user has an active exam session, redirect /join back to the exam.
+  // But first verify with the backend that the session is still active —
+  // stale localStorage (finished/disconnected participant) causes a blank page.
   if (to.name === 'join') {
     const participantId = examStore.participantId || localStorage.getItem('participantId')
     const sessionId = examStore.sessionId || localStorage.getItem('examSessionId')
     if (participantId && sessionId) {
-      return next({ name: 'exam', params: { sessionId } })
+      try {
+        // Dynamically import client to avoid circular dependency
+        const { default: client } = await import('@/api/client')
+        const res = await client.get(`/exam/participant/${participantId}/status`)
+        const status: string = res.data?.status || ''
+        if (status === 'active') {
+          // Genuinely still in exam — resume
+          return next({ name: 'exam', params: { sessionId } })
+        } else {
+          // finished, disconnected, or unknown — clear stale data and stay on /join
+          examStore.clearExam()
+        }
+      } catch {
+        // API unreachable or 404 (participant not found) — clear and show /join
+        examStore.clearExam()
+      }
     }
   }
 

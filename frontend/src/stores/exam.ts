@@ -96,12 +96,14 @@ export const useExamStore = defineStore('exam', {
 
         // 3. Load only the first module's questions initially
         this.loadCurrentModuleQuestions()
-      } catch (e) {
-        console.error('Failed to fetch modules:', e)
+      } catch (e: any) {
+        // Reset state but re-throw so callers (ExamPage) can detect if the
+        // session was deleted mid-exam and redirect accordingly.
         this.modules = []
         this.questions = []
         this.allQuestions = []
         this.moduleGroups = []
+        throw e
       }
     },
 

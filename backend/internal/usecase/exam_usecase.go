@@ -313,3 +313,7 @@ func (uc *ExamUseCase) GetParticipantAnswers(ctx context.Context, participantID 
 func (uc *ExamUseCase) GetParticipants(ctx context.Context, sessionID uuid.UUID) ([]domain.SessionParticipant, error) {
 	return uc.participantRepo.ListBySession(ctx, sessionID)
 }
+
+func (uc *ExamUseCase) GetParticipantByID(ctx context.Context, participantID uuid.UUID) (*domain.SessionParticipant, error) {
+	return uc.participantRepo.FindByID(ctx, participantID)
+}
