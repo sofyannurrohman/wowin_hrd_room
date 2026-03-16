@@ -121,7 +121,7 @@
           <div class="space-y-2">
             <Label class="text-xs font-bold text-slate-600 uppercase tracking-wider">Upload CV (PDF) *</Label>
             <div class="relative group">
-              <input type="file" ref="cvInput" @change="handleFileDrop" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
+              <input type="file" @change="handleFileDrop" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
               <div class="w-full border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-slate-50 group-hover:bg-blue-50 group-hover:border-blue-300 transition-colors" :class="{'bg-blue-50 border-blue-400': cvFile}">
                 <svg v-if="!cvFile" class="w-8 h-8 text-slate-400 mb-2 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -163,6 +163,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import client from '@/api/client'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -178,6 +179,7 @@ import {
 } from '@/components/ui/select'
 import viteLogo from '@/assets/vite.svg'
 
+const route = useRoute()
 const submitted = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
@@ -195,13 +197,21 @@ const form = ref({
   last_education: ''
 })
 
-const cvInput = ref<HTMLInputElement | null>(null)
 const cvFile = ref<File | null>(null)
 
 onMounted(async () => {
   try {
     const res = await client.get('/job-positions/active')
     positions.value = res.data.positions || []
+    
+    // Check for pre-selected position from query
+    const queryPos = route.query.position as string
+    if (queryPos) {
+      const match = positions.value.find(p => p.name.toLowerCase() === queryPos.toLowerCase())
+      if (match) {
+        form.value.position = match.name
+      }
+    }
   } catch (err) {
     console.error('Failed to load job positions', err)
   }
@@ -211,14 +221,16 @@ const handleFileDrop = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     const file = target.files[0]
+    if (!file) return
+
     if (file.type !== 'application/pdf') {
        errorMsg.value = 'File CV harus berformat PDF.'
        target.value = ''
        cvFile.value = null
        return
     }
-    if (file.size > 10 * 1024 * 1024) { // 10MB
-       errorMsg.value = 'Ukuran CV maksimal 10MB.'
+    if (file.size > 1 * 1024 * 1024) { // 1MB
+       errorMsg.value = 'Ukuran CV maksimal 1MB.'
        target.value = ''
        cvFile.value = null
        return

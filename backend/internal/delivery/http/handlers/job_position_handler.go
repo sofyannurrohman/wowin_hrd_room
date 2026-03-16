@@ -21,7 +21,7 @@ func NewJobPositionHandler(uc *usecase.JobPositionUseCase) *JobPositionHandler {
 func (h *JobPositionHandler) ListActive(c *gin.Context) {
 	positions, err := h.uc.GetActivePositions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"positions": positions})
@@ -30,7 +30,7 @@ func (h *JobPositionHandler) ListActive(c *gin.Context) {
 func (h *JobPositionHandler) ListAll(c *gin.Context) {
 	positions, err := h.uc.GetAllPositions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"positions": positions})
@@ -53,22 +53,26 @@ func (h *JobPositionHandler) GetByID(c *gin.Context) {
 
 func (h *JobPositionHandler) Create(c *gin.Context) {
 	var req struct {
-		Name     string `json:"name" binding:"required"`
-		IsActive bool   `json:"is_active"`
+		Name         string `json:"name" binding:"required"`
+		Description  string `json:"description"`
+		Requirements string `json:"requirements"`
+		IsActive     bool   `json:"is_active"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	p := &domain.JobPosition{
-		Name:     req.Name,
-		IsActive: req.IsActive,
+		Name:         req.Name,
+		Description:  req.Description,
+		Requirements: req.Requirements,
+		IsActive:     req.IsActive,
 	}
 
 	if err := h.uc.CreatePosition(c.Request.Context(), p); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -83,22 +87,26 @@ func (h *JobPositionHandler) Update(c *gin.Context) {
 	}
 
 	var req struct {
-		Name     string `json:"name" binding:"required"`
-		IsActive bool   `json:"is_active"`
+		Name         string `json:"name" binding:"required"`
+		Description  string `json:"description"`
+		Requirements string `json:"requirements"`
+		IsActive     bool   `json:"is_active"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	p := &domain.JobPosition{
-		Name:     req.Name,
-		IsActive: req.IsActive,
+		Name:         req.Name,
+		Description:  req.Description,
+		Requirements: req.Requirements,
+		IsActive:     req.IsActive,
 	}
 
 	if err := h.uc.UpdatePosition(c.Request.Context(), id, p); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -113,7 +121,7 @@ func (h *JobPositionHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.uc.DeletePosition(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 

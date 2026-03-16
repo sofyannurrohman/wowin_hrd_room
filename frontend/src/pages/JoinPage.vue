@@ -6,7 +6,7 @@
         <div class="w-36 h-36 rounded-full flex items-center justify-center">
           <img :src="viteLogo" alt="Logo" class="w-16 h-16" />
         </div>
-        <span class="text-slate-800">HRD Room</span>
+        <span class="text-slate-800">Wowin Assesment Center</span>
       </div>
     </div>
 
@@ -61,14 +61,14 @@
           </Button>
 
           <div class="pt-6 mt-2 border-t border-slate-100">
-            <p class="text-sm text-center text-slate-500 mb-4 font-medium">Belum memiliki token atau belum melamar?</p>
+            <p class="text-sm text-center text-slate-500 mb-4 font-medium">Belum memiliki token atau ingin melihat lowongan?</p>
             <Button 
               variant="outline"
               class="w-full h-12 text-sm border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 rounded-xl transition-all flex items-center justify-center gap-2 font-semibold" 
-              @click="router.push('/apply')" 
+              @click="router.push('/career')" 
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              Lamar Pekerjaan Sekarang
+              Lihat Peluang Karir
             </Button>
           </div>
         </CardContent>
@@ -133,6 +133,53 @@
               <div class="text-left">
                 <p class="text-xs text-slate-500">Butuh bantuan?</p>
                 <RouterLink to="/contact-support" class="text-sm font-semibold text-blue-600 hover:underline">Contact Support</RouterLink>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Informational Section -->
+        <Card class="shadow-sm border-0 rounded-2xl bg-white p-2">
+          <CardContent class="p-4 md:p-6 space-y-6">
+            <div class="space-y-4">
+              <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-4">
+                <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                </div>
+                Informasi Test
+              </h3>
+
+              <!-- IST Test -->
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-white transition-all duration-300">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                  <p class="font-bold text-sm text-blue-700">IST Test</p>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed ml-4">
+                  Intelligence Structure Test mengukur struktur intelegensi dan potensi akademik Anda dalam berbagai aspek kognitif.
+                </p>
+              </div>
+
+              <!-- DISC Test -->
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-purple-200 hover:bg-white transition-all duration-300">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                  <p class="font-bold text-sm text-purple-700">DISC Test</p>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed ml-4">
+                  Asesmen kepribadian untuk memahami gaya perilaku dan kecenderungan interaksi Anda di lingkungan kerja.
+                </p>
+              </div>
+
+              <!-- Skill Based Hiring -->
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-white transition-all duration-300">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <p class="font-bold text-sm text-emerald-700">Skill Based Hiring</p>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed ml-4">
+                  Evaluasi kemampuan teknis dan keterampilan spesifik yang relevan dengan posisi pekerjaan yang dilamar.
+                </p>
               </div>
             </div>
           </CardContent>

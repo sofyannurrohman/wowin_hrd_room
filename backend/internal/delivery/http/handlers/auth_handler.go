@@ -31,13 +31,13 @@ func NewAuthHandler(authUC *usecase.AuthUseCase, jwtManager *jwtpkg.Manager) *Au
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req usecase.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	resp, err := h.authUC.Login(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req usecase.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	user, err := h.authUC.Register(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		c.JSON(http.StatusConflict, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -98,9 +98,9 @@ func (h *AuthHandler) Me(c *gin.Context) {
 // Apply handles public job applications (multipart/form-data)
 func (h *AuthHandler) Apply(c *gin.Context) {
 	// 1. Parse form
-	err := c.Request.ParseMultipartForm(10 << 20) // 10 MB limit
+	err := c.Request.ParseMultipartForm(2 << 20) // 2 MB total limit
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran data terlalu besar"})
 		return
 	}
 
@@ -157,6 +157,12 @@ func (h *AuthHandler) Apply(c *gin.Context) {
 	if err == nil {
 		defer file.Close()
 
+		// Check file size (max 1 MB)
+		if header.Size > 1*1024*1024 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran CV maksimal 1MB"})
+			return
+		}
+
 		// Create uploads folder if it doesn't exist
 		uploadDir := "./uploads/cv"
 		os.MkdirAll(uploadDir, os.ModePerm)
@@ -197,7 +203,7 @@ func (h *AuthHandler) Apply(c *gin.Context) {
 
 	user, err := h.authUC.Register(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		c.JSON(http.StatusConflict, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -210,13 +216,13 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 
 	var req usecase.UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	user, err := h.authUC.UpdateProfile(c.Request.Context(), userID, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -229,12 +235,12 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 
 	var req usecase.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	if err := h.authUC.ChangePassword(c.Request.Context(), userID, req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 

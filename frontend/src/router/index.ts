@@ -26,6 +26,11 @@ const router = createRouter({
       component: () => import('../pages/ApplicationPage.vue')
     },
     {
+      path: '/career',
+      name: 'career',
+      component: () => import('../pages/CareerPage.vue')
+    },
+    {
       path: '/camera-check',
       name: 'cameraCheck',
       component: () => import('../pages/CameraCheckPage.vue')

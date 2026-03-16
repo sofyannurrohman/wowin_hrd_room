@@ -54,6 +54,9 @@
               <h3 class="font-semibold text-slate-900 truncate pr-4 text-lg">
                 {{ pos.name }}
               </h3>
+              <p v-if="pos.description" class="text-xs text-slate-400 mt-1 line-clamp-1 italic">
+                {{ pos.description }}
+              </p>
               <div class="flex items-center gap-4 text-xs font-medium text-slate-500 mt-2">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium" :class="pos.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'">
                   {{ pos.is_active ? 'Aktif' : 'Non-Aktif' }}
@@ -105,6 +108,8 @@ import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 interface JobPosition {
   id: string
   name: string
+  description: string
+  requirements: string
   is_active: boolean
   created_at: string
 }

@@ -26,7 +26,7 @@ func (h *ModuleHandler) Create(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *ModuleHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.uc.CreateModule(c.Request.Context(), mod); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *ModuleHandler) Create(c *gin.Context) {
 func (h *ModuleHandler) List(c *gin.Context) {
 	mods, err := h.uc.ListModules(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"modules": mods})
@@ -95,7 +95,7 @@ func (h *ModuleHandler) Update(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *ModuleHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.uc.UpdateModule(c.Request.Context(), id, mod); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -121,7 +121,7 @@ func (h *ModuleHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.uc.DeleteModule(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 

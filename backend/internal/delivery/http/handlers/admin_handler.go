@@ -29,7 +29,7 @@ func NewAdminHandler(userRepo *repository.UserRepository, logRepo *repository.Lo
 func (h *AdminHandler) ListUsers(c *gin.Context) {
 	users, err := h.userRepo.List(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, users)
@@ -52,7 +52,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "user deleted"})
@@ -73,7 +73,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 
 	var req UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -94,7 +94,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Update(c.Request.Context(), user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -104,7 +104,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 func (h *AdminHandler) GetLogs(c *gin.Context) {
 	logs, err := h.logRepo.List(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -112,12 +112,17 @@ func (h *AdminHandler) GetLogs(c *gin.Context) {
 
 // POST /api/participants/import
 func (h *AdminHandler) ImportParticipants(c *gin.Context) {
-	file, _, err := c.Request.FormFile("file")
+	file, fileHeader, err := c.Request.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file CSV wajib diunggah"})
 		return
 	}
 	defer file.Close()
+
+	if fileHeader.Size > 2*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran file CSV maksimal 2MB"})
+		return
+	}
 
 	reader := csv.NewReader(file)
 	// Read header

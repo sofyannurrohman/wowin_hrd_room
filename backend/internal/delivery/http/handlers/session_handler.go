@@ -29,13 +29,13 @@ func (h *SessionHandler) Create(c *gin.Context) {
 
 	var req usecase.CreateSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	session, err := h.sessionUC.Create(c.Request.Context(), userID, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusCreated, session)
@@ -48,7 +48,7 @@ func (h *SessionHandler) List(c *gin.Context) {
 
 	sessions, err := h.sessionUC.List(c.Request.Context(), role.(string), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, sessions)
@@ -77,13 +77,13 @@ func (h *SessionHandler) Update(c *gin.Context) {
 
 	var req usecase.CreateSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	session, err := h.sessionUC.Update(c.Request.Context(), id, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, session)
@@ -107,7 +107,7 @@ func (h *SessionHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.sessionUC.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "session deleted"})
@@ -125,12 +125,12 @@ func (h *SessionHandler) Lock(c *gin.Context) {
 		Locked bool `json:"locked"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	if err := h.sessionUC.Lock(c.Request.Context(), id, req.Locked); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -155,13 +155,13 @@ func (h *SessionHandler) GenerateTokens(c *gin.Context) {
 
 	var req usecase.GenerateTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	tokens, err := h.sessionUC.GenerateTokens(c.Request.Context(), sessionID, req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"tokens": tokens})
@@ -175,7 +175,7 @@ func (h *SessionHandler) ListTokens(c *gin.Context) {
 	}
 	tokens, err := h.sessionUC.ListTokens(c.Request.Context(), sessionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, tokens)

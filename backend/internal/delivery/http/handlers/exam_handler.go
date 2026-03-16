@@ -42,13 +42,13 @@ func (h *ExamHandler) Join(c *gin.Context) {
 		Position string `json:"position"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
 	token, session, err := h.sessionUC.ValidateToken(c.Request.Context(), req.Token)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -66,7 +66,7 @@ func (h *ExamHandler) Join(c *gin.Context) {
 
 	participant, err := h.examUC.Join(c.Request.Context(), req.Name, req.Email, req.Age, req.Position, token, session)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *ExamHandler) GetModules(c *gin.Context) {
 
 	modules, err := h.examUC.GetModulesForParticipant(c.Request.Context(), sessionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	if modules == nil {
@@ -131,7 +131,7 @@ func (h *ExamHandler) GetQuestionsForModule(c *gin.Context) {
 
 	questions, err := h.examUC.GetQuestionsForModule(c.Request.Context(), sessionID, moduleID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, questions)
@@ -141,7 +141,7 @@ func (h *ExamHandler) GetQuestionsForModule(c *gin.Context) {
 func (h *ExamHandler) SubmitAnswers(c *gin.Context) {
 	var req usecase.SubmitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -152,14 +152,14 @@ func (h *ExamHandler) SubmitAnswers(c *gin.Context) {
 	}
 
 	if err := h.examUC.SaveAnswers(c.Request.Context(), participantID, req.Answers); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
 	// Auto-grade immediately on submit
 	result, err := h.examUC.AutoGrade(c.Request.Context(), participantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *ExamHandler) SubmitAnswers(c *gin.Context) {
 func (h *ExamHandler) AutoSaveAnswers(c *gin.Context) {
 	var req usecase.SubmitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -185,7 +185,7 @@ func (h *ExamHandler) AutoSaveAnswers(c *gin.Context) {
 	}
 
 	if err := h.examUC.SaveAnswers(c.Request.Context(), participantID, req.Answers); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *ExamHandler) GetParticipantAnswersPublic(c *gin.Context) {
 	}
 	answers, err := h.examUC.GetParticipantAnswers(c.Request.Context(), participantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, answers)
@@ -235,7 +235,7 @@ func (h *ExamHandler) GetResults(c *gin.Context) {
 	}
 	results, err := h.examUC.GetResults(c.Request.Context(), sessionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, results)
@@ -250,7 +250,7 @@ func (h *ExamHandler) GetParticipantAnswers(c *gin.Context) {
 	}
 	answers, err := h.examUC.GetParticipantAnswers(c.Request.Context(), participantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, answers)
@@ -260,11 +260,11 @@ func (h *ExamHandler) GetParticipantAnswers(c *gin.Context) {
 func (h *ExamHandler) HRReview(c *gin.Context) {
 	var req usecase.HRReviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 	if err := h.examUC.HRReview(c.Request.Context(), req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "review berhasil disimpan"})
@@ -278,7 +278,7 @@ func (h *ExamHandler) FinalizeScore(c *gin.Context) {
 		return
 	}
 	if err := h.examUC.FinalizeScore(c.Request.Context(), resultID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "nilai berhasil difinalisasi"})
@@ -293,7 +293,7 @@ func (h *ExamHandler) GetParticipants(c *gin.Context) {
 	}
 	participants, err := h.examUC.GetParticipants(c.Request.Context(), sessionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, participants)
@@ -307,7 +307,7 @@ func (h *ExamHandler) ReportViolation(c *gin.Context) {
 		ViolationType string `json:"violation_type" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -324,7 +324,7 @@ func (h *ExamHandler) ReportViolation(c *gin.Context) {
 	}
 
 	if err := h.vRepo.Create(c.Request.Context(), v); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -355,7 +355,7 @@ func (h *ExamHandler) GetViolations(c *gin.Context) {
 	}
 	violations, err := h.vRepo.ListBySession(c.Request.Context(), sessionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, violations)
@@ -433,6 +433,11 @@ func (h *QuestionHTTPHandler) Create(c *gin.Context) {
 			return
 		}
 
+		if header.Size > 2*1024*1024 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran gambar maksimal 2MB"})
+			return
+		}
+
 		imgDir := filepath.Join(h.uploadDir, "questions")
 		if err := os.MkdirAll(imgDir, 0755); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal membuat direktori upload"})
@@ -452,7 +457,7 @@ func (h *QuestionHTTPHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.qRepo.Create(c.Request.Context(), q); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -489,7 +494,7 @@ func (h *QuestionHTTPHandler) ListByModule(c *gin.Context) {
 	}
 	questions, err := h.qRepo.ListByModule(c.Request.Context(), moduleID, false)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, questions)
@@ -499,7 +504,7 @@ func (h *QuestionHTTPHandler) ListByModule(c *gin.Context) {
 func (h *QuestionHTTPHandler) ListAll(c *gin.Context) {
 	questions, err := h.qRepo.ListAll(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, questions)
@@ -563,6 +568,12 @@ func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 	if err == nil && file != nil {
 		defer file.Close()
 		ext := filepath.Ext(header.Filename)
+
+		if header.Size > 2*1024*1024 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran gambar maksimal 2MB"})
+			return
+		}
+
 		imgDir := filepath.Join(h.uploadDir, "questions")
 		os.MkdirAll(imgDir, 0755)
 		filename := fmt.Sprintf("%s_%s%s", q.ID.String(), time.Now().Format("20060102150405"), ext)
@@ -580,7 +591,7 @@ func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.qRepo.Update(c.Request.Context(), q); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 
@@ -612,12 +623,17 @@ func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 
 // POST /api/questions/import
 func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
-	file, _, err := c.Request.FormFile("file")
+	file, fileHeader, err := c.Request.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file CSV tidak ditemukan"})
 		return
 	}
 	defer file.Close()
+
+	if fileHeader.Size > 2*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran file CSV maksimal 2MB"})
+		return
+	}
 
 	reader := csv.NewReader(file)
 	// Optionally handle different delimiters, though default is comma
@@ -803,7 +819,7 @@ func (h *QuestionHTTPHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.qRepo.Delete(c.Request.Context(), qID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "soal berhasil dihapus"})
