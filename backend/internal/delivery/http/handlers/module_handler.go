@@ -20,8 +20,9 @@ func NewModuleHandler(uc *usecase.ModuleUseCase) *ModuleHandler {
 
 func (h *ModuleHandler) Create(c *gin.Context) {
 	var req struct {
-		Name        string `json:"name" binding:"required"`
-		Description string `json:"description"`
+		Name        string  `json:"name" binding:"required"`
+		Description string  `json:"description"`
+		TotalWeight float64 `json:"total_weight"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -44,6 +45,7 @@ func (h *ModuleHandler) Create(c *gin.Context) {
 	mod := &domain.Module{
 		Name:        req.Name,
 		Description: req.Description,
+		TotalWeight: req.TotalWeight,
 		CreatedBy:   uid,
 	}
 
@@ -87,8 +89,9 @@ func (h *ModuleHandler) Update(c *gin.Context) {
 	}
 
 	var req struct {
-		Name        string `json:"name" binding:"required"`
-		Description string `json:"description"`
+		Name        string  `json:"name" binding:"required"`
+		Description string  `json:"description"`
+		TotalWeight float64 `json:"total_weight"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -99,6 +102,7 @@ func (h *ModuleHandler) Update(c *gin.Context) {
 	mod := &domain.Module{
 		Name:        req.Name,
 		Description: req.Description,
+		TotalWeight: req.TotalWeight,
 	}
 
 	if err := h.uc.UpdateModule(c.Request.Context(), id, mod); err != nil {
