@@ -70,6 +70,13 @@ func (r *QuestionRepository) ListByModule(ctx context.Context, moduleID uuid.UUI
 	return questions, nil
 }
 
+func (r *QuestionRepository) GetTotalWeightByModule(ctx context.Context, moduleID uuid.UUID) (float64, error) {
+	row := r.db.QueryRow(ctx, `SELECT COALESCE(SUM(weight), 0) FROM questions WHERE module_id=$1`, moduleID)
+	var total float64
+	err := row.Scan(&total)
+	return total, err
+}
+
 func (r *QuestionRepository) ListAll(ctx context.Context) ([]domain.Question, error) {
 	query := `SELECT id, module_id, type, content, image_url, weight, requires_manual_review, created_at FROM questions ORDER BY created_at DESC`
 	rows, err := r.db.Query(ctx, query)

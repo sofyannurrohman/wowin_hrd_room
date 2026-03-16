@@ -5,10 +5,61 @@
         <h2 class="text-3xl font-extrabold tracking-tight text-slate-800">Dashboard Overview</h2>
         <p class="text-slate-500 mt-1">Welcome back! mari kita lihat apa yang terjadi di HRD Room hari ini.</p>
       </div>
-      <div class="flex items-center gap-3">
-        <Button variant="outline" size="icon" class="rounded-full bg-white border-slate-200 text-slate-600">
-          <BellIcon class="w-5 h-5" />
-        </Button>
+      <div class="flex items-center gap-3 relative">
+        <div class="relative">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            class="rounded-full bg-white border-slate-200 text-slate-600 transition-all hover:bg-slate-50"
+            @click="showNotifications = !showNotifications"
+          >
+            <BellIcon class="w-5 h-5" />
+            <span v-if="notifications.length > 0" class="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+          </Button>
+
+          <!-- Notifications Dropdown -->
+          <div v-if="showNotifications" class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <h3 class="font-bold text-slate-800 text-sm">Notifications</h3>
+              <Badge variant="secondary" class="bg-blue-100 text-blue-700 text-[10px]">{{ notifications.length }} New</Badge>
+            </div>
+            <div class="max-h-[350px] overflow-y-auto">
+              <div v-if="notifications.length === 0" class="p-8 text-center">
+                <div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <BellIcon class="w-6 h-6 text-slate-300" />
+                </div>
+                <p class="text-xs text-slate-500 font-medium">No new notifications</p>
+              </div>
+              <div v-else>
+                <div 
+                  v-for="(n, idx) in notifications" 
+                  :key="idx"
+                  class="p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors group"
+                  @click="router.push(n.link); showNotifications = false"
+                >
+                  <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center" :class="n.bgClass">
+                      <component :is="n.icon" class="w-4 h-4" :class="n.iconClass" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs font-bold text-slate-800 leading-tight group-hover:text-blue-600 transition-colors">{{ n.title }}</p>
+                      <p class="text-[11px] text-slate-500 mt-1 line-clamp-2">{{ n.message }}</p>
+                      <p class="text-[10px] text-slate-400 mt-1.5 font-medium flex items-center gap-1">
+                        <ClockIcon class="w-3 h-3" /> {{ n.timeLabel }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-if="notifications.length > 0" class="p-3 border-t border-slate-50 bg-slate-50/30">
+              <button @click="showNotifications = false" class="w-full py-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+
         <Button class="rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2" @click="router.push('/sessions/create')">
           <PlusIcon class="w-4 h-4" /> Buat Sesi Exam Baru
         </Button>
@@ -92,8 +143,9 @@
                 </TableCell>
                 <TableCell class="py-4 px-2">
                   <div class="text-sm text-slate-600 font-medium">
-                    {{ session.participant_count || 0 }} / {{ session.max_participants }}
+                    {{ session.submitted_participant_count || 0 }} / {{ session.total_participant_count || 0 }}
                   </div>
+                  <div class="text-[10px] text-slate-400 mt-0.5 uppercase font-bold tracking-tighter">Selesai / Total</div>
                 </TableCell>
                 <TableCell class="py-4 px-2">
                   <Badge :class="getStatusBadgeClass(session)" class="font-medium text-[11px] px-2.5 py-0.5 rounded-full border-0">
@@ -182,7 +234,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { 
   BellIcon, PlusIcon, MonitorIcon, UsersIcon,
   TrendingUpIcon, UserCheckIcon, EyeIcon,
-  ChevronRightIcon, FileTextIcon, KeyIcon
+  ChevronRightIcon, FileTextIcon, KeyIcon,
+  CalendarIcon, ClockIcon, AlertTriangleIcon, MonitorPlayIcon
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -192,6 +245,49 @@ const stats = ref<any>(null)
 
 const recentSessions = computed(() => {
   return [...sessionStore.sessions].slice(0, 4) // Show top 4
+})
+
+const showNotifications = ref(false)
+const notifications = computed(() => {
+  const list: any[] = []
+  const now = new Date()
+
+  sessionStore.sessions.forEach(s => {
+    const start = new Date(s.schedule)
+    const end = new Date(start.getTime() + s.duration_minutes * 60000)
+    const status = getStatusText(s)
+
+    // 1. Currently active sessions
+    if (status === 'Active') {
+      list.push({
+        title: 'Sesi Sedang Berlangsung',
+        message: `Sesi "${s.name}" sedang aktif sekarang. Klik untuk monitor.`,
+        icon: MonitorPlayIcon,
+        bgClass: 'bg-green-50',
+        iconClass: 'text-green-600',
+        timeLabel: 'LIVE',
+        link: `/sessions/${s.id}/monitor`
+      })
+    }
+
+    // 2. Scheduled sessions in the next 24 hours
+    const hoursRemaining = (start.getTime() - now.getTime()) / (1000 * 60 * 60)
+    if (status === 'Scheduled' && hoursRemaining > 0 && hoursRemaining < 24) {
+      list.push({
+        title: 'Sesi Akan Datang',
+        message: `Sesi "${s.name}" akan dimulai dalam ${Math.floor(hoursRemaining)} jam.`,
+        icon: CalendarIcon,
+        bgClass: 'bg-blue-50',
+        iconClass: 'text-blue-600',
+        timeLabel: start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        link: `/sessions/${s.id}`
+      })
+    }
+
+    // 3. High violations in completed/active sessions (if data was available, but let's stick to session status)
+  })
+
+  return list
 })
 
 onMounted(async () => {

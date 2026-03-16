@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"hrd_room/backend/config"
@@ -19,6 +22,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -60,6 +64,7 @@ func main() {
 	logRepo := repository.NewLogRepository(db)
 	dashboardRepo := repository.NewDashboardRepository(db)
 	jobPositionRepo := repository.NewJobPositionRepository(db)
+	settingsRepo := repository.NewSettingsRepository(db)
 
 	// Use cases
 	var emailSender email.Sender
@@ -74,6 +79,7 @@ func main() {
 	moduleUC := usecase.NewModuleUseCase(moduleRepo)
 	jobPositionUC := usecase.NewJobPositionUseCase(jobPositionRepo)
 	examUC := usecase.NewExamUseCase(participantRepo, answerRepo, resultRepo, questionRepo, moduleRepo, sessionRepo, tokenRepo, userRepo)
+	settingsUC := usecase.NewSettingsUseCase(settingsRepo)
 
 	// WebSocket hub
 	hub := ws.NewHub()
@@ -84,10 +90,11 @@ func main() {
 	moduleH := handlers.NewModuleHandler(moduleUC)
 	jobPositionH := handlers.NewJobPositionHandler(jobPositionUC)
 	examH := handlers.NewExamHandler(examUC, sessionUC, questionRepo, violationRepo, hub, uploadDir)
-	questionH := handlers.NewQuestionHTTPHandler(questionRepo, uploadDir)
-	adminH := handlers.NewAdminHandler(userRepo, logRepo)
+	questionH := handlers.NewQuestionHTTPHandler(questionRepo, moduleRepo, uploadDir)
+	adminH := handlers.NewAdminHandler(userRepo, logRepo, uploadDir)
 	dashboardH := handlers.NewDashboardHandler(dashboardRepo)
 	wsH := handlers.NewWSHandler(hub)
+	settingsH := handlers.NewSettingsHandler(settingsUC)
 
 	// Gin setup
 	if cfg.AppEnv == "production" {
@@ -143,6 +150,8 @@ func main() {
 	{
 		// Current user
 		authAPI.GET("auth/me", authH.Me)
+		authAPI.PUT("auth/profile", authH.UpdateProfile)
+		authAPI.PUT("auth/password", authH.ChangePassword)
 
 		// ─── HR / Admin Routes ────────────────────────────────────────────────
 		hrRoutes := authAPI.Group("/")
@@ -203,6 +212,10 @@ func main() {
 			hrRoutes.POST("participants/import", adminH.ImportParticipants)
 			hrRoutes.PUT("participants/:id", adminH.UpdateUser)
 			hrRoutes.DELETE("participants/:id", adminH.DeleteUser)
+
+			// Settings
+			hrRoutes.GET("settings/:key", settingsH.Get)
+			hrRoutes.PUT("settings/:key", settingsH.Update)
 		}
 
 		// ─── Super Admin Only ─────────────────────────────────────────────────
@@ -223,6 +236,70 @@ func main() {
 	}
 }
 
-func runMigrations(db interface{}) error {
-	return nil // migrations handled via Docker init script
+func runMigrations(db *pgxpool.Pool) error {
+	ctx := context.Background()
+
+	// 1. Create schema_migrations table if not exists
+	_, err := db.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			filename TEXT PRIMARY KEY,
+			applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	// 2. Read migrations folder
+	files, err := os.ReadDir("migrations")
+	if err != nil {
+		return err
+	}
+
+	var filenames []string
+	for _, f := range files {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".sql") {
+			filenames = append(filenames, f.Name())
+		}
+	}
+	sort.Strings(filenames)
+
+	// 3. Apply missing migrations
+	for _, filename := range filenames {
+		var exists bool
+		err := db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE filename = $1)", filename).Scan(&exists)
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			log.Printf("Applying migration: %s", filename)
+			content, err := os.ReadFile(filepath.Join("migrations", filename))
+			if err != nil {
+				return err
+			}
+
+			// Execute as one transaction per file
+			tx, err := db.Begin(ctx)
+			if err != nil {
+				return err
+			}
+
+			if _, err := tx.Exec(ctx, string(content)); err != nil {
+				tx.Rollback(ctx)
+				log.Printf("Failed to apply migration %s: %v", filename, err)
+				return err
+			}
+
+			if _, err := tx.Exec(ctx, "INSERT INTO schema_migrations (filename) VALUES ($1)", filename); err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+
+			if err := tx.Commit(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

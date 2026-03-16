@@ -57,9 +57,7 @@
         </Alert>
 
         <div class="flex items-center gap-4 pb-4 border-b flex-wrap">
-           <Input v-model.number="tokenCount" type="number" min="1" max="50" class="w-32" />
-           <Button @click="generateTokens" :disabled="generating">Generate Token Acak</Button>
-           <Button variant="secondary" @click="openInviteModal" class="flex items-center gap-2">
+           <Button variant="default" @click="openInviteModal" class="flex items-center gap-2">
              <MailIcon class="w-4 h-4" /> Kirim Undangan via Email
            </Button>
         </div>
@@ -141,7 +139,6 @@ import client from '@/api/client'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeftIcon, MonitorPlayIcon, FileTextIcon, ShieldAlertIcon, BarChart3Icon, MailIcon } from 'lucide-vue-next'
@@ -153,8 +150,6 @@ const sessionId = route.params.id as string
 
 const session = ref<any>(null)
 const tokens = ref<any[]>([])
-const tokenCount = ref(1)
-const generating = ref(false)
 const alertMessage = ref('')
 const alertVariant = ref<'default' | 'destructive'>('default')
 
@@ -181,31 +176,6 @@ const loadData = async () => {
 }
 
 onMounted(loadData)
-
-const generateTokens = async () => {
-  generating.value = true
-  try {
-    const end_time = new Date(new Date(session.value.schedule).getTime() + session.value.duration_minutes * 60000).toISOString()
-    const res = await client.post(`/sessions/${sessionId}/tokens`, {
-      count: tokenCount.value,
-      max_usage: 1, // typically 1 participant per token
-      expires_at: end_time
-    })
-    
-    showSuccess(`${tokenCount.value} Token berhasil dibuat`)
-    
-    // Merge new tokens with plainly visible token strings into the list
-    if (res.data && res.data.tokens) {
-      tokens.value = [...res.data.tokens, ...tokens.value]
-    } else {
-      await loadData()
-    }
-  } catch (e) {
-    showError('Gagal generate token')
-  } finally {
-    generating.value = false
-  }
-}
 
 const copy = (txt: string) => {
   navigator.clipboard.writeText(txt)

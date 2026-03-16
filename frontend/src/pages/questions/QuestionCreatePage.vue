@@ -20,9 +20,17 @@
             </select>
           </div>
 
-          <div class="space-y-2">
-            <Label for="content">Pertanyaan</Label>
-            <Textarea id="content" v-model="form.content" class="min-h-[100px]" required />
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <Label for="content">Pertanyaan</Label>
+              <Textarea id="content" v-model="form.content" class="min-h-[100px]" required />
+            </div>
+
+            <div class="space-y-2">
+              <Label for="weight">Bobot / Poin</Label>
+              <Input id="weight" type="number" step="0.01" min="0.01" v-model.number="form.weight" placeholder="1.0" required />
+              <p class="text-xs text-slate-500">Bobot spesifik pertanyaan ini terhadap total bobot modul.</p>
+            </div>
           </div>
 
           <div class="space-y-2">
@@ -108,6 +116,7 @@ const form = ref({
   module_id: '',
   content: '',
   type: 'multiple_choice',
+  weight: 1.0,
 })
 
 const fileObj = ref<File | null>(null)
@@ -150,6 +159,7 @@ const submit = async () => {
     const formData = new FormData()
     formData.append('content', form.value.content)
     formData.append('type', form.value.type)
+    formData.append('weight', form.value.weight.toString())
     if (form.value.module_id) formData.append('module_id', form.value.module_id)
     if (fileObj.value) formData.append('image', fileObj.value)
 

@@ -2,6 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import { FaceMesh } from '@mediapipe/face_mesh'
 import type { Results } from '@mediapipe/face_mesh'
 import { useExamStore } from '@/stores/exam'
+import { toast } from 'vue-sonner'
 
 // ─── Module-level singleton ───────────────────────────────────────────────────
 // MediaPipe's FaceMesh WASM cannot be instantiated more than once per browser
@@ -113,7 +114,7 @@ export function useAntiCheat() {
   const handleVisibilityChange = () => {
     if (document.hidden && isDetecting.value) {
       reportViolation('tab_switch')
-      alert('PELANGGARAN: Anda membuka tab lain. Aktivitas direkam.')
+      toast.error('PELANGGARAN: Anda membuka tab lain. Aktivitas direkam.')
     }
   }
 
@@ -123,7 +124,7 @@ export function useAntiCheat() {
     }
   }
 
-  const handleCopyPaste = (e: ClipboardEvent) => {
+  const handleCopyPaste = (e: Event) => {
     if (isDetecting.value) e.preventDefault()
   }
 

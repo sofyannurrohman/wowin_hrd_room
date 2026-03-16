@@ -5,12 +5,22 @@
         <h1 class="text-2xl font-bold tracking-tight text-slate-900">Posisi Pekerjaan</h1>
         <p class="text-sm text-slate-500 mt-1">Kelola daftar posisi yang sedang aktif dibuka</p>
       </div>
-      <RouterLink
-        to="/job-positions/create"
-        class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-      >
-        <PlusIcon class="w-4 h-4" /> Tambah Posisi
-      </RouterLink>
+      <div class="flex items-center gap-3 w-full md:w-auto">
+        <div class="relative w-64">
+           <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+           <input
+             v-model="search"
+             placeholder="Cari nama posisi..."
+             class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+        </div>
+        <RouterLink
+          to="/job-positions/create"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          <PlusIcon class="w-4 h-4" /> Tambah Posisi
+        </RouterLink>
+      </div>
     </div>
 
     <!-- Job Positions List -->
@@ -19,7 +29,7 @@
         Memuat data...
       </div>
       
-      <div v-else-if="positions.length === 0" class="p-12 text-center flex flex-col items-center">
+      <div v-else-if="filteredPositions.length === 0" class="p-12 text-center flex flex-col items-center">
         <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
           <BriefcaseIcon class="w-8 h-8" />
         </div>
@@ -32,7 +42,7 @@
 
       <div v-else class="divide-y divide-slate-100">
         <div
-          v-for="pos in positions"
+          v-for="pos in paginatedData"
           :key="pos.id"
           class="p-6 transition-colors hover:bg-slate-50 flex items-start gap-4 justify-between"
         >
@@ -72,15 +82,25 @@
           </div>
         </div>
       </div>
+      
+      <div v-if="filteredPositions.length > 0" class="p-4 border-t border-slate-100 bg-slate-50/30">
+        <DataTablePagination 
+          :total="totalItems"
+          v-model:pageSize="pageSize"
+          v-model:currentPage="currentPage"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { PlusIcon, BriefcaseIcon, Edit2Icon, Trash2Icon, CalendarIcon } from 'lucide-vue-next'
+import { ref, onMounted, computed } from 'vue'
+import { PlusIcon, BriefcaseIcon, Edit2Icon, Trash2Icon, CalendarIcon, SearchIcon } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import client from '@/api/client'
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 
 interface JobPosition {
   id: string
@@ -91,6 +111,18 @@ interface JobPosition {
 
 const positions = ref<JobPosition[]>([])
 const loading = ref(true)
+const search = ref('')
+
+const filteredPositions = computed(() => {
+  return positions.value.filter(p => p.name.toLowerCase().includes(search.value.toLowerCase()))
+})
+
+const {
+  pageSize,
+  currentPage,
+  paginatedData,
+  totalItems
+} = useDataTable(filteredPositions)
 
 const fetchPositions = async () => {
   try {

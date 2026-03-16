@@ -17,24 +17,55 @@
         <CardDescription>Review hasil grading otomatis dan berikan nilai manual untuk esai.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Alert v-if="alertMessage" :variant="alertVariant" class="mb-4">
-          <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
-          <AlertDescription>{{ alertMessage }}</AlertDescription>
-        </Alert>
+        <div class="mb-4">
+           <div class="relative w-64">
+              <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input v-model="search" placeholder="Cari nama atau email..." class="pl-9" />
+           </div>
+        </div>
+
 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Peserta</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('user_name')">
+                <div class="flex items-center gap-1">
+                  Peserta
+                  <ArrowUpDownIcon v-if="sortConfig.key !== 'user_name'" class="w-3.5 h-3.5" />
+                  <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                  <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+                </div>
+              </TableHead>
+              <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('user_email')">
+                <div class="flex items-center gap-1">
+                  Email
+                  <ArrowUpDownIcon v-if="sortConfig.key !== 'user_email'" class="w-3.5 h-3.5" />
+                  <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                  <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+                </div>
+              </TableHead>
               <TableHead>Status Ujian</TableHead>
-              <TableHead>Skor</TableHead>
-              <TableHead>Status Review</TableHead>
+              <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('total_score')">
+                <div class="flex items-center gap-1">
+                  Skor
+                  <ArrowUpDownIcon v-if="sortConfig.key !== 'total_score'" class="w-3.5 h-3.5" />
+                  <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                  <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+                </div>
+              </TableHead>
+              <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('grading_status')">
+                <div class="flex items-center gap-1">
+                  Status Review
+                  <ArrowUpDownIcon v-if="sortConfig.key !== 'grading_status'" class="w-3.5 h-3.5" />
+                  <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                  <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+                </div>
+              </TableHead>
               <TableHead class="text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="res in results" :key="res.id">
+            <TableRow v-for="res in paginatedData" :key="res.id">
               <TableCell class="font-medium">{{ res.user_name || '-' }}</TableCell>
               <TableCell>{{ res.user_email || '-' }}</TableCell>
               <TableCell>Disubmit</TableCell>
@@ -50,11 +81,19 @@
                 <Button size="sm" @click="submitFinalize(res)" v-if="res.grading_status !== 'completed'">Finalisasi</Button>
               </TableCell>
             </TableRow>
-            <TableRow v-if="results.length === 0">
-              <TableCell colspan="6" class="text-center h-24">Belum ada hasil yang masuk. Pastikan peserta telah Submit ujian.</TableCell>
+            <TableRow v-if="filteredResults.length === 0">
+              <TableCell colspan="6" class="text-center h-24">{{ results.length === 0 ? 'Belum ada hasil yang masuk. Pastikan peserta telah Submit ujian.' : 'Tidak ada hasil ditemukan.' }}</TableCell>
             </TableRow>
           </TableBody>
         </Table>
+        
+        <div v-if="filteredResults.length > 0" class="mt-4">
+          <DataTablePagination 
+            :total="totalItems"
+            v-model:pageSize="pageSize"
+            v-model:currentPage="currentPage"
+          />
+        </div>
       </CardContent>
     </Card>
 
@@ -66,29 +105,47 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import client from '@/api/client'
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeftIcon } from 'lucide-vue-next'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { ArrowLeftIcon, ArrowUpDownIcon, ArrowUpIcon, ArrowDownIcon, SearchIcon } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import { Input } from '@/components/ui/input'
+import { computed } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
 const sessionId = route.params.id as string
 
 const results = ref<any[]>([])
-const alertMessage = ref('')
-const alertVariant = ref<'default' | 'destructive'>('default')
+const search = ref('')
+
+const filteredResults = computed(() => {
+  const q = search.value.toLowerCase()
+  return results.value.filter(res => 
+    (res.user_name || '').toLowerCase().includes(q) || 
+    (res.user_email || '').toLowerCase().includes(q)
+  )
+})
+
+const {
+  pageSize,
+  currentPage,
+  sortConfig,
+  toggleSort,
+  paginatedData,
+  totalItems
+} = useDataTable(filteredResults)
 
 const showSuccess = (message: string) => {
-  alertVariant.value = 'default'
-  alertMessage.value = message
+  toast.success(message)
 }
 
 const showError = (message: string) => {
-  alertVariant.value = 'destructive'
-  alertMessage.value = message
+  toast.error(message)
 }
 
 const loadResults = async () => {

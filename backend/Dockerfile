@@ -13,6 +13,7 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /hrd_backend ./hrd_backend
+COPY migrations ./migrations
 
 RUN mkdir -p /app/uploads/questions
 

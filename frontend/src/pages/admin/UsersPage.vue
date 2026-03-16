@@ -11,14 +11,35 @@
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nama</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role ID</TableHead>
+            <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('name')">
+              <div class="flex items-center gap-1">
+                Nama
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'name'" class="w-3.5 h-3.5" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+              </div>
+            </TableHead>
+            <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('email')">
+              <div class="flex items-center gap-1">
+                Email
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'email'" class="w-3.5 h-3.5" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+              </div>
+            </TableHead>
+            <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('role_id')">
+              <div class="flex items-center gap-1">
+                Role ID
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'role_id'" class="w-3.5 h-3.5" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+              </div>
+            </TableHead>
             <TableHead class="text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="user in users" :key="user.id">
+          <TableRow v-for="user in paginatedData" :key="user.id">
             <TableCell class="font-medium">{{ user.name || (user.role_id === 1 ? 'Super Admin' : user.role_id === 2 ? 'HR' : 'Peserta') }}</TableCell>
             <TableCell>{{ user.email }}</TableCell>
             <TableCell>
@@ -40,6 +61,13 @@
           </TableRow>
         </TableBody>
       </Table>
+      
+      <DataTablePagination 
+        v-if="users.length > 0"
+        :total="totalItems"
+        v-model:pageSize="pageSize"
+        v-model:currentPage="currentPage"
+      />
     </Card>
 
     <!-- Create User Dialog -->
@@ -101,6 +129,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import client from '@/api/client'
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -109,9 +139,19 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
-import { UserPlusIcon, TrashIcon, EditIcon } from 'lucide-vue-next'
+import { UserPlusIcon, TrashIcon, EditIcon, ArrowUpDownIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-vue-next'
 
 const users = ref<any[]>([])
+
+const {
+  pageSize,
+  currentPage,
+  sortConfig,
+  toggleSort,
+  paginatedData,
+  totalItems
+} = useDataTable(users)
+
 const showCreateDialog = ref(false)
 const creating = ref(false)
 

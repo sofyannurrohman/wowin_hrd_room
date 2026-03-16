@@ -259,8 +259,16 @@ const viewAnswers = (sessionId: string, spId: string) => {
 }
 
 const downloadCV = (url: string) => {
-  const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
-  const baseUrl = backendUrl.replace('/api', '')
-  window.open(`${baseUrl}${url}`, '_blank')
+  if (!url) return
+  
+  // Use VITE_API_URL if provided (removing /api for static uploads), 
+  // otherwise fallback to a relative path which works via Nginx/Vite proxy.
+  const backendUrl = import.meta.env.VITE_API_URL
+  if (backendUrl) {
+    const baseUrl = backendUrl.replace(/\/api$/, '')
+    window.open(`${baseUrl}${url}`, '_blank')
+  } else {
+    window.open(url, '_blank')
+  }
 }
 </script>

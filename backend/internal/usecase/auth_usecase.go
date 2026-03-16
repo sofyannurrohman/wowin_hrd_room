@@ -95,3 +95,46 @@ func (uc *AuthUseCase) Register(ctx context.Context, req RegisterRequest) (*doma
 	}
 	return user, nil
 }
+
+type UpdateProfileRequest struct {
+	Name  string `json:"name" binding:"required"`
+	Email string `json:"email" binding:"required,email"`
+}
+
+func (uc *AuthUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, req UpdateProfileRequest) (*domain.User, error) {
+	user, err := uc.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	user.Name = req.Name
+	user.Email = req.Email
+
+	if err := uc.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
+func (uc *AuthUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, req ChangePasswordRequest) error {
+	user, err := uc.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if !repository.CheckPassword(user.PasswordHash, req.CurrentPassword) {
+		return errors.New("kata sandi saat ini salah")
+	}
+
+	newHash, err := repository.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	return uc.userRepo.UpdatePassword(ctx, userID, newHash)
+}

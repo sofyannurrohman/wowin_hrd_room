@@ -136,7 +136,7 @@
 
         <div class="space-y-2">
           <div
-            v-for="v in filteredViolations"
+            v-for="v in paginatedData"
             :key="v.id"
             class="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-4 hover:border-slate-200 hover:shadow-sm transition-all relative overflow-hidden"
           >
@@ -163,6 +163,14 @@
             </div>
           </div>
 
+          <div v-if="filteredViolations.length > 0" class="pt-4">
+             <DataTablePagination 
+               :total="totalItems"
+               v-model:pageSize="pageSize"
+               v-model:currentPage="currentPage"
+             />
+          </div>
+
           <div v-if="filteredViolations.length === 0" class="bg-white border border-dashed border-slate-200 rounded-xl p-12 text-center text-slate-400">
             <ShieldCheckIcon class="w-12 h-12 mx-auto mb-3 opacity-20" />
             <p class="font-semibold">Tidak ada pelanggaran ditemukan.</p>
@@ -178,6 +186,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import client from '@/api/client'
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -240,6 +250,13 @@ const filteredViolations = computed(() => {
   }
   return list
 })
+
+const {
+  pageSize,
+  currentPage,
+  paginatedData,
+  totalItems
+} = useDataTable(filteredViolations)
 
 const participantSummary = computed(() => {
   const map: Record<string, { id: string; name: string; total: number; byType: Record<string, number> }> = {}

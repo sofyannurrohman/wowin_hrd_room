@@ -4,6 +4,8 @@ import (
 	"encoding/csv"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -15,12 +17,13 @@ import (
 )
 
 type AdminHandler struct {
-	userRepo *repository.UserRepository
-	logRepo  *repository.LogRepository
+	userRepo  *repository.UserRepository
+	logRepo   *repository.LogRepository
+	uploadDir string
 }
 
-func NewAdminHandler(userRepo *repository.UserRepository, logRepo *repository.LogRepository) *AdminHandler {
-	return &AdminHandler{userRepo: userRepo, logRepo: logRepo}
+func NewAdminHandler(userRepo *repository.UserRepository, logRepo *repository.LogRepository, uploadDir string) *AdminHandler {
+	return &AdminHandler{userRepo: userRepo, logRepo: logRepo, uploadDir: uploadDir}
 }
 
 func (h *AdminHandler) ListUsers(c *gin.Context) {
@@ -38,6 +41,16 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
 	}
+
+	user, err := h.userRepo.FindByID(c.Request.Context(), id)
+	if err == nil && user.CvURL != nil && *user.CvURL != "" {
+		// Attempt to delete CV file
+		// CV url format is usually /uploads/cv/filename
+		relPath := strings.TrimPrefix(*user.CvURL, "/uploads")
+		fullPath := filepath.Join(h.uploadDir, relPath)
+		os.Remove(fullPath)
+	}
+
 	if err := h.userRepo.Delete(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

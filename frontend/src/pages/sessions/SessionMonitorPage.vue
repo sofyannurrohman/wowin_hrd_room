@@ -37,44 +37,49 @@
     </div>
 
     <div class="flex items-center justify-between pt-4">
-      <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-        <UsersIcon class="w-5 h-5 text-slate-400" />
-        {{ onlineCount }} Active / {{ onlineParticipants.length }} Total Participants
-      </h3>
+      <div class="flex items-center gap-4">
+        <div class="relative w-64">
+           <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+           <Input v-model="search" placeholder="Cari nama peserta..." class="pl-9" />
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <UsersIcon class="w-5 h-5 text-slate-400" />
+          {{ onlineCount }} Active / {{ onlineParticipants.length }} Total Participants
+        </h3>
+      </div>
       <div class="flex bg-slate-100 p-1 rounded-lg">
-        <button class="px-4 py-1.5 text-sm font-semibold rounded-md bg-white shadow-sm text-slate-800">Grid View</button>
-        <button class="px-4 py-1.5 text-sm font-semibold rounded-md text-slate-500 hover:text-slate-800">List View</button>
+        <button 
+          @click="viewMode = 'grid'"
+          class="px-4 py-1.5 text-sm font-semibold rounded-md transition-all"
+          :class="viewMode === 'grid' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'"
+        >
+          Grid View
+        </button>
+        <button 
+          @click="viewMode = 'list'"
+          class="px-4 py-1.5 text-sm font-semibold rounded-md transition-all"
+          :class="viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'"
+        >
+          List View
+        </button>
       </div>
     </div>
 
     <div class="flex-1 flex gap-6 min-h-0">
       <!-- Participants Grid -->
       <div class="flex-1 overflow-y-auto bg-slate-50/50 rounded-2xl border border-slate-100 p-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-10">
-          
+        <!-- GRID VIEW -->
+        <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-10">
           <Card v-for="(p, pid) in participantsStatus" :key="pid" class="overflow-hidden border border-slate-200 shadow-sm rounded-xl flex flex-col group transition-all hover:shadow-md hover:border-blue-200 cursor-pointer relative" :class="getCardBorderClass(p.status)">
-            
             <!-- Video Feed: live frame when streaming, avatar fallback otherwise -->
             <div class="h-36 bg-slate-900 relative w-full overflow-hidden flex items-center justify-center">
-               <!-- Live camera frame -->
-               <img
-                 v-if="participantFrames[pid]"
-                 :src="participantFrames[pid]"
-                 class="w-full h-full object-cover"
-                 :alt="p.name"
-               />
-               <!-- Fallback avatar -->
-               <img
-                 v-else
-                 :src="`https://api.dicebear.com/7.x/initials/svg?seed=${p.name}&backgroundColor=0f172a&textColor=ffffff`"
-                 class="w-16 h-16 rounded-full opacity-50"
-               />
+               <img v-if="participantFrames[pid]" :src="participantFrames[pid]" class="w-full h-full object-cover" :alt="p.name" />
+               <img v-else :src="`https://api.dicebear.com/7.x/initials/svg?seed=${p.name}&backgroundColor=0f172a&textColor=ffffff`" class="w-16 h-16 rounded-full opacity-50" />
                <div class="absolute inset-x-2 top-2 flex justify-between items-start">
                   <div class="p-1.5 bg-black/50 rounded-md text-white backdrop-blur-sm">
                     <MicOffIcon class="w-3.5 h-3.5" v-if="Math.random() > 0.5" />
                     <MicIcon class="w-3.5 h-3.5" v-else />
                   </div>
-                  <!-- Live pulsing badge when streaming -->
                   <div v-if="participantFrames[pid]" class="flex items-center gap-1 bg-red-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-sm">
                     <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> LIVE
                   </div>
@@ -84,7 +89,6 @@
                   </Badge>
                </div>
             </div>
-
             <CardContent class="p-3.5 bg-white flex flex-col gap-1 relative z-10">
               <div class="flex items-center justify-between">
                 <h4 class="font-bold text-sm text-slate-800 truncate pr-2 w-full">{{ p.name }}</h4>
@@ -96,11 +100,65 @@
               </div>
             </CardContent>
           </Card>
+        </div>
 
-          <div v-if="Object.keys(participantsStatus).length === 0" class="col-span-full py-20 text-center text-slate-400 flex flex-col items-center justify-center">
-            <VideoOffIcon class="w-12 h-12 mb-4 opacity-20" />
-            <p class="font-semibold">Menunggu peserta bergabung...</p>
+        <!-- LIST VIEW -->
+        <div v-if="viewMode === 'list'" class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <Table>
+            <TableHeader class="bg-slate-50">
+              <TableRow>
+                <TableHead class="w-[300px]">Participant</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Safety Level</TableHead>
+                <TableHead>Camera Feed</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="p in paginatedData" :key="p.id" class="hover:bg-slate-50/50">
+                <TableCell>
+                  <div>
+                    <p class="font-bold text-slate-800 text-sm">{{ p.name }}</p>
+                    <p class="text-[10px] text-slate-500 font-mono">ID: {{ p.id.toString().substring(0,8).toUpperCase() }}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full" :class="p.status === 'online' ? 'bg-green-500' : 'bg-slate-300'"></div>
+                    <span class="text-xs font-medium capitalize">{{ p.status || 'Active' }}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    variant="outline" 
+                    :class="p.status === 'multiple_face' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'"
+                    class="text-[10px] font-bold"
+                  >
+                    {{ p.status === 'multiple_face' ? 'CRITICAL' : 'SECURE' }}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div class="w-16 h-10 bg-slate-900 rounded border border-slate-200 overflow-hidden flex items-center justify-center">
+                    <img v-if="participantFrames[p.id]" :src="participantFrames[p.id]" class="w-full h-full object-cover" />
+                    <component v-else :is="getWebcamBadgeIcon(p.status)" class="w-4 h-4 text-white/30" />
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          
+          <div class="p-4 border-t border-slate-100 bg-slate-50/30">
+            <DataTablePagination 
+              v-if="participantsList.length > 0"
+              :total="totalItems"
+              v-model:pageSize="pageSize"
+              v-model:currentPage="currentPage"
+            />
           </div>
+        </div>
+
+        <div v-if="Object.keys(participantsStatus).length === 0" class="py-20 text-center text-slate-400 flex flex-col items-center justify-center">
+          <VideoOffIcon class="w-12 h-12 mb-4 opacity-20" />
+          <p class="font-semibold">Menunggu peserta bergabung...</p>
         </div>
       </div>
 
@@ -112,16 +170,18 @@
               <CardTitle class="text-base font-bold text-slate-800">Violation Log</CardTitle>
               <CardDescription class="text-xs text-slate-500 mt-0.5">Real-time alerts stream</CardDescription>
             </div>
-            <a href="#" class="text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors">Export CSV</a>
+            <button @click="exportCSV" class="text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
+              <FileSpreadsheetIcon class="w-3 h-3" /> Export CSV
+            </button>
           </div>
         </CardHeader>
         
         <CardContent class="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-slate-50/50">
-          <div v-if="recentViolations.length === 0" class="p-6 text-center text-xs text-slate-400 font-medium mt-10">
+          <div v-if="allViolations.length === 0" class="p-6 text-center text-xs text-slate-400 font-medium mt-10">
             Scanning in progress.<br/>No violations detected.
           </div>
           
-          <div v-for="(v, i) in recentViolations" :key="i" class="p-3.5 bg-white border border-slate-100 rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-all hover:border-red-200 relative overflow-hidden group">
+          <div v-for="(v, i) in allViolations.slice(0, 50)" :key="i" class="p-3.5 bg-white border border-slate-100 rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-all hover:border-red-200 relative overflow-hidden group">
             <div class="absolute left-0 top-0 bottom-0 w-1" :class="getViolationSeverityColor(v.violation_type)"></div>
             
             <div class="flex gap-3">
@@ -131,9 +191,9 @@
               <div class="flex-1">
                  <div class="flex justify-between items-start mb-0.5">
                    <h5 class="text-xs font-bold text-slate-800">{{ formatViolationType(v.violation_type) }}</h5>
-                   <span class="text-[10px] text-slate-400 font-medium">{{ new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) }}</span>
+                   <span class="text-[10px] text-slate-400 font-medium">{{ new Date(v.detected_at || v.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) }}</span>
                  </div>
-                 <p class="text-[11px] text-slate-500 leading-tight">Participant: <span class="font-medium text-slate-700">{{ v.participant_name || v.participant_id.substring(0,8) }}</span></p>
+                 <p class="text-[11px] text-slate-500 leading-tight">Participant: <span class="font-medium text-slate-700">{{ v.participant_name || v.user_name || v.participant_id.substring(0,8) }}</span></p>
                  
                  <div class="mt-2 flex gap-2" v-if="v.violation_type === 'multiple_face' || v.violation_type === 'tab_switch'">
                     <Badge variant="destructive" class="text-[9px] px-1.5 py-0 rounded bg-red-100 text-red-700 hover:bg-red-200 border-0 uppercase font-bold tracking-wider">Flag</Badge>
@@ -148,19 +208,69 @@
            <div class="flex gap-4 items-center mb-3">
              <div class="flex items-center gap-1.5">
                <div class="w-2 h-2 rounded-full bg-red-500"></div>
-               <span class="text-[11px] font-bold text-slate-600">3 Critical</span>
+               <span class="text-[11px] font-bold text-slate-600">{{ criticalCount }} Critical</span>
              </div>
              <div class="flex items-center gap-1.5">
                <div class="w-2 h-2 rounded-full bg-orange-500"></div>
-               <span class="text-[11px] font-bold text-slate-600">5 Warnings</span>
+               <span class="text-[11px] font-bold text-slate-600">{{ warningCount }} Warnings</span>
              </div>
            </div>
-           <Button variant="outline" class="w-full text-xs font-bold h-9 bg-slate-50 border-slate-200 text-slate-700">
-             View All Logs
-           </Button>
-        </div>
+           <Button 
+              variant="outline" 
+              class="w-full text-xs font-bold h-9 bg-slate-50 border-slate-200 text-slate-700"
+              @click="showAllLogs = true"
+            >
+              View All Logs
+            </Button>
+         </div>
       </Card>
     </div>
+
+    <!-- View All Logs Dialog -->
+    <Dialog :open="showAllLogs" @update:open="showAllLogs = $event">
+      <DialogContent class="max-w-3xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>All Violation Logs - {{ sessionTitle }}</DialogTitle>
+        </DialogHeader>
+        
+        <div class="flex-1 overflow-y-auto pr-2 mt-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Time</TableHead>
+                <TableHead>Participant</TableHead>
+                <TableHead>Violation Type</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="(v, i) in allViolations" :key="i">
+                <TableCell class="font-mono text-xs">
+                  {{ new Date(v.detected_at || v.timestamp).toLocaleTimeString() }}
+                </TableCell>
+                <TableCell class="font-medium">
+                  {{ v.user_name || v.participant_name || v.participant_id.substring(0,8) }}
+                </TableCell>
+                <TableCell>
+                  <div class="flex items-center gap-2">
+                    <component :is="getViolationIcon(v.violation_type)" class="w-4 h-4" :class="getViolationIconColor(v.violation_type)" />
+                    <span class="text-xs">{{ formatViolationType(v.violation_type) }}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" :class="v.violation_type === 'multiple_face' ? 'text-red-600 border-red-200' : 'text-orange-600 border-orange-200'">
+                    Flagged
+                  </Badge>
+                </TableCell>
+              </TableRow>
+              <TableRow v-if="allViolations.length === 0">
+                <TableCell colspan="4" class="text-center py-10 text-slate-400">No violations recorded yet.</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -175,8 +285,25 @@ import { Button } from '@/components/ui/button'
 import { 
   ArrowLeftIcon, UsersIcon, StopCircleIcon, VideoOffIcon,
   MicIcon, MicOffIcon, ShieldAlertIcon, AlertTriangleIcon, FocusIcon,
-  CheckCircle2Icon, EyeOffIcon, MaximizeIcon, UserXIcon
+  CheckCircle2Icon, EyeOffIcon, MaximizeIcon, UserXIcon, FileSpreadsheetIcon, SearchIcon
 } from 'lucide-vue-next'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -192,6 +319,48 @@ let timerInterval: number | null = null
 
 // Init WebSocket connection
 const { isConnected, participantsStatus, recentViolations, participantFrames } = useWebSocket(sessionId)
+
+const allViolations = ref<any[]>([])
+const showAllLogs = ref(false)
+const viewMode = ref<'grid' | 'list'>('grid')
+
+const criticalCount = computed(() => allViolations.value.filter(v => v.violation_type === 'multiple_face').length)
+const warningCount = computed(() => allViolations.value.filter(v => v.violation_type !== 'multiple_face').length)
+
+const participantsList = computed(() => {
+  return Object.entries(participantsStatus).map(([id, p]: [string, any]) => ({
+    id,
+    ...p
+  }))
+})
+
+const search = ref('')
+const filteredParticipants = computed(() => {
+  return participantsList.value.filter(p => p.name.toLowerCase().includes(search.value.toLowerCase()))
+})
+
+const {
+  pageSize,
+  currentPage,
+  paginatedData,
+  totalItems
+} = useDataTable(filteredParticipants)
+
+// Sync WS violations to allViolations
+import { watch } from 'vue'
+watch(() => recentViolations.value, (newVal) => {
+  if (newVal.length > 0) {
+    const latest = newVal[0]
+    // Only add if not already in (avoiding race condition with history fetch)
+    const exists = allViolations.value.some(v => 
+      (v.id && v.id === latest.id) || 
+      (v.timestamp === latest.timestamp && v.participant_id === latest.participant_id && v.violation_type === latest.violation_type)
+    )
+    if (!exists) {
+      allViolations.value.unshift(latest)
+    }
+  }
+}, { deep: true })
 
 const onlineCount = computed(() => {
   return Object.values(participantsStatus).filter((p: any) => p.status === 'online').length
@@ -224,7 +393,7 @@ onMounted(async () => {
     const p = await client.get(`/sessions/${sessionId}/participants`)
     onlineParticipants.value = p.data || []
 
-    // Seed participantsStatus from DB (status stays as-is — only WS joins/frames set 'online')
+    // Seed participantsStatus from DB
     onlineParticipants.value.forEach((part: any) => {
       if (!participantsStatus[part.id]) {
         participantsStatus[part.id] = {
@@ -233,10 +402,52 @@ onMounted(async () => {
         }
       }
     })
+
+    // Fetch violation history
+    const v = await client.get(`/sessions/${sessionId}/violations`)
+    const history = v.data || []
+    // Merge history into allViolations (avoid duplicates)
+    history.forEach((h: any) => {
+      const exists = allViolations.value.some(v => v.id === h.id)
+      if (!exists) allViolations.value.push(h)
+    })
+    // Sort by time descending
+    allViolations.value.sort((a, b) => {
+      const timeA = new Date(a.detected_at || a.timestamp).getTime()
+      const timeB = new Date(b.detected_at || b.timestamp).getTime()
+      return timeB - timeA
+    })
   } catch (e) {
     console.error("Failed to load session info for monitor", e)
   }
 })
+
+const exportCSV = () => {
+  if (allViolations.value.length === 0) {
+    alert('No violation data to export')
+    return
+  }
+
+  const headers = ['Time', 'Participant ID', 'Participant Name', 'Violation Type']
+  const rows = allViolations.value.map(v => [
+    new Date(v.detected_at || v.timestamp).toLocaleString(),
+    v.participant_id,
+    v.user_name || v.participant_name || 'Unknown',
+    formatViolationType(v.violation_type)
+  ])
+
+  let csvContent = "data:text/csv;charset=utf-8," 
+    + headers.join(",") + "\n"
+    + rows.map(r => r.map(cell => `"${cell}"`).join(",")).join("\n")
+
+  const encodedUri = encodeURI(csvContent)
+  const link = document.createElement("a")
+  link.setAttribute("href", encodedUri)
+  link.setAttribute("download", `violations_${sessionId}_${new Date().toISOString().slice(0,10)}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
 
 const getCardBorderClass = (status: string) => {
   if (status === 'multiple_face') return 'border-red-500 shadow-[0_0_0_1px_rgba(239,68,68,1)]'

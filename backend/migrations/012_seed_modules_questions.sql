@@ -3,29 +3,33 @@
 -- Uses fixed UUIDs so this script is idempotent (safe to re-check).
 
 -- ─── MODULES ──────────────────────────────────────────────────────────────
-INSERT INTO modules (id, name, description, created_by) VALUES
+INSERT INTO modules (id, name, description, total_weight, created_by) VALUES
   (
     'a1000000-0000-0000-0000-000000000001',
     'Kemampuan Verbal',
     'Mengukur kemampuan memahami dan menggunakan bahasa secara efektif, termasuk sinonim, antonim, dan analogi kata.',
+    100.00,
     '11111111-1111-1111-1111-111111111111'
   ),
   (
     'a2000000-0000-0000-0000-000000000002',
     'Kemampuan Numerik',
     'Mengukur kemampuan berhitung, penalaran angka, dan pemahaman pola matematika dasar.',
+    100.00,
     '11111111-1111-1111-1111-111111111111'
   ),
   (
     'a3000000-0000-0000-0000-000000000003',
     'Kemampuan Logika & Analitis',
     'Mengukur kemampuan penalaran logis, deduksi, induksi, dan analisis situasi secara kritis.',
+    100.00,
     '11111111-1111-1111-1111-111111111111'
   ),
   (
     'a4000000-0000-0000-0000-000000000004',
     'Tes Psikologi & Kepribadian',
     'Mengukur profil kepribadian, kecenderungan perilaku, dan kesesuaian dengan budaya kerja.',
+    100.00,
     '11111111-1111-1111-1111-111111111111'
   )
 ON CONFLICT (id) DO NOTHING;

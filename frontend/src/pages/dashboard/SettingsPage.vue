@@ -139,6 +139,12 @@
                 <input type="checkbox" v-model="notificationSettings.candidateShortlisted" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mt-1 cursor-pointer" />
               </div>
             </div>
+            <div class="p-6 bg-slate-50/50 border-t border-slate-100 flex justify-end">
+              <Button @click="saveNotificationSettings" :disabled="isSavingSettings">
+                <Loader2Icon v-if="isSavingSettings" class="w-4 h-4 mr-2 animate-spin" />
+                Save Preferences
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -166,13 +172,19 @@
                    <h3 class="font-medium text-gray-900">Data Retention</h3>
                    <p class="text-gray-500">How long should exam results and participant data be kept in the system?</p>
                  </div>
-                 <select class="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                   <option>30 Days</option>
-                   <option>90 Days</option>
-                   <option>1 Year</option>
-                   <option>Keep Forever</option>
+                 <select v-model="systemSettings.dataRetention" class="w-full max-w-xs px-3 py-2 bg-white border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                   <option value="30 Days">30 Days</option>
+                   <option value="90 Days">90 Days</option>
+                   <option value="1 Year">1 Year</option>
+                   <option value="Keep Forever">Keep Forever</option>
                  </select>
               </div>
+            </div>
+            <div class="p-6 bg-slate-50/50 border-t border-slate-100 flex justify-end">
+              <Button @click="saveSystemSettings" :disabled="isSavingSettings">
+                <Loader2Icon v-if="isSavingSettings" class="w-4 h-4 mr-2 animate-spin" />
+                Apply Settings
+              </Button>
             </div>
           </div>
         </div>
@@ -184,6 +196,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import client from '@/api/client'
+import { toast } from 'vue-sonner'
 import { 
   UserCircleIcon, 
   BellIcon, 
@@ -229,39 +243,91 @@ const notificationSettings = ref({
 
 // System State
 const systemSettings = ref({
-  strictMode: false
+  strictMode: false,
+  dataRetention: 'Keep Forever'
 })
 
+const isSavingSettings = ref(false)
+
+const loadSettings = async () => {
+  try {
+    const resNotif = await client.get('/settings/notification_settings')
+    notificationSettings.value = resNotif.data
+    
+    const resSystem = await client.get('/settings/system_settings')
+    systemSettings.value = resSystem.data
+  } catch (err) {
+    console.error('Failed to load settings', err)
+  }
+}
 
 onMounted(() => {
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || ''
     profileForm.value.email = authStore.user.email || ''
   }
+  loadSettings()
 })
 
 const saveProfile = async () => {
   isSavingProfile.value = true
-  // Mock API call
-  setTimeout(() => {
+  try {
+    await client.put('/auth/profile', profileForm.value)
+    if (authStore.user) {
+      authStore.user.name = profileForm.value.name
+      authStore.user.email = profileForm.value.email
+    }
+    toast.success('Profil Berhasil Diperbarui')
+  } catch (err: any) {
+    toast.error(err.response?.data?.error || 'Gagal memperbarui profil')
+  } finally {
     isSavingProfile.value = false
-    alert('Profile Updated: Your changes have been saved successfully.')
-  }, 1000)
+  }
 }
 
 const updatePassword = async () => {
   if (passwordForm.value.new !== passwordForm.value.confirm) {
-    alert('Error: New passwords do not match.')
+    toast.error('Kata sandi baru tidak cocok')
     return
   }
   
   isUpdatingPassword.value = true
-  // Mock API call
-  setTimeout(() => {
-    isUpdatingPassword.value = false
+  try {
+    await client.put('/auth/password', {
+      current_password: passwordForm.value.current,
+      new_password: passwordForm.value.new
+    })
     passwordForm.value = { current: '', new: '', confirm: '' }
-    alert('Password Updated: Your password has been changed securely.')
-  }, 1000)
+    toast.success('Kata sandi berhasil diubah')
+  } catch (err: any) {
+    toast.error(err.response?.data?.error || 'Gagal mengubah kata sandi')
+  } finally {
+    isUpdatingPassword.value = false
+  }
+}
+
+const saveNotificationSettings = async () => {
+  isSavingSettings.value = true
+  try {
+    await client.put('/settings/notification_settings', notificationSettings.value)
+    toast.success('Pengaturan notifikasi disimpan')
+  } catch (err) {
+    toast.error('Gagal menyimpan pengaturan notifikasi')
+  } finally {
+    isSavingSettings.value = false
+  }
+}
+
+const saveSystemSettings = async () => {
+  isSavingSettings.value = true
+  try {
+    await client.put('/settings/system_settings', systemSettings.value)
+    toast.success('Pengaturan sistem disimpan')
+  } catch (err) {
+    toast.error('Gagal menyimpan pengaturan sistem')
+  } finally {
+    isSavingSettings.value = false
+  }
 }
 
 </script>

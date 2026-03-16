@@ -25,9 +25,17 @@
             </select>
           </div>
 
-          <div class="space-y-2">
-            <Label for="content">Pertanyaan</Label>
-            <Textarea id="content" v-model="form.content" class="min-h-[100px]" required />
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <Label for="content">Pertanyaan</Label>
+              <Textarea id="content" v-model="form.content" class="min-h-[100px]" required />
+            </div>
+
+            <div class="space-y-2">
+              <Label for="weight">Bobot / Poin</Label>
+              <Input id="weight" type="number" step="0.01" min="0.01" v-model.number="form.weight" placeholder="1.0" required />
+              <p class="text-xs text-slate-500">Bobot spesifik pertanyaan ini terhadap total bobot modul.</p>
+            </div>
           </div>
 
           <div class="space-y-2">
@@ -129,6 +137,7 @@ const form = ref({
   module_id: '',
   content: '',
   type: 'multiple_choice',
+  weight: 1.0,
 })
 
 const fileObj = ref<File | null>(null)
@@ -147,8 +156,15 @@ let questionId = ''
 
 const getImageUrl = (path: string | null | undefined) => {
     if (!path) return ''
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
-    return baseUrl ? baseUrl.replace('/api', '') + path : path
+    
+    // Use VITE_API_URL if provided (removing /api for static assets), 
+    // otherwise return path as is (relative) which works via Nginx/Vite proxy.
+    const backendUrl = import.meta.env.VITE_API_URL
+    if (backendUrl) {
+      const baseUrl = backendUrl.replace(/\/api$/, '')
+      return `${baseUrl}${path}`
+    }
+    return path
 }
 
 onMounted(async () => {
@@ -161,6 +177,7 @@ onMounted(async () => {
         form.value.module_id = data.module_id === '00000000-0000-0000-0000-000000000000' ? '' : data.module_id
         form.value.content = data.content
         form.value.type = data.type
+        form.value.weight = data.weight || 1.0
         existingImage.value = data.image_url
 
         if (data.options && data.options.length > 0) {
@@ -204,6 +221,7 @@ const submit = async () => {
     const formData = new FormData()
     formData.append('content', form.value.content)
     formData.append('type', form.value.type)
+    formData.append('weight', form.value.weight.toString())
     if (fileObj.value) formData.append('image', fileObj.value)
 
     let finalOptions: any[] = []

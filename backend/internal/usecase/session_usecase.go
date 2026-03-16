@@ -143,6 +143,10 @@ func (uc *SessionUseCase) GenerateTokens(ctx context.Context, sessionID uuid.UUI
 		return nil, errors.New("tidak dapat generate token: sesi ujian sudah dikunci")
 	}
 
+	if req.BoundEmail == nil || *req.BoundEmail == "" {
+		return nil, errors.New("email wajib diisi untuk keamanan (token harus tertaut ke peserta)")
+	}
+
 	endTime := session.Schedule.Add(time.Duration(session.DurationMinutes) * time.Minute)
 	if time.Now().After(endTime) {
 		return nil, errors.New("tidak dapat generate token: sesi ujian sudah selesai")

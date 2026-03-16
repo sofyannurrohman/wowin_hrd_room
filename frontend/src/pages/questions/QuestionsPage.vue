@@ -1,8 +1,17 @@
 <template>
   <div class="space-y-6 max-w-7xl mx-auto">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <h2 class="text-3xl font-bold tracking-tight">Bank Soal</h2>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative w-full md:w-64">
+           <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+           <Input v-model="search" placeholder="Cari konten soal..." class="pl-9" />
+        </div>
+        <select v-model="moduleFilter" class="flex h-10 w-full md:w-48 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+          <option value="">Semua Modul</option>
+          <option value="global">Bank Soal Global</option>
+          <option v-for="m in modules" :key="m.id" :value="m.id">{{ m.name }}</option>
+        </select>
         <Button variant="outline" @click="isImportModalOpen = true">
           <UploadIcon class="mr-2 h-4 w-4" /> Import CSV
         </Button>
@@ -17,7 +26,7 @@
         <DialogHeader>
           <DialogTitle>Import Bank Soal (CSV)</DialogTitle>
           <DialogDescription>
-            Unggah file CSV dengan format yang sesuai. Anda dapat mendownload template terlebih dahulu.
+            Unggah file CSV dengan format yang sesuai dan sesuaikan jumlah bobot soal dengan total point modul. Anda dapat mendownload template terlebih dahulu.
           </DialogDescription>
         </DialogHeader>
         <div class="grid gap-4 py-4">
@@ -48,18 +57,50 @@
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead class="w-[400px]">Konten Soal</TableHead>
-            <TableHead>Tipe Soal</TableHead>
+            <TableHead class="w-[400px] cursor-pointer hover:text-primary transition-colors" @click="toggleSort('content')">
+              <div class="flex items-center gap-1">
+                Konten Soal
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'content'" class="w-3.5 h-3.5" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+              </div>
+            </TableHead>
+            <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('type')">
+              <div class="flex items-center gap-1">
+                Tipe Soal
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'type'" class="w-3.5 h-3.5" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+              </div>
+            </TableHead>
+            <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('weight')">
+              <div class="flex items-center gap-1">
+                Bobot Poin
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'weight'" class="w-3.5 h-3.5" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+              </div>
+            </TableHead>
             <TableHead>Lampiran Gambar</TableHead>
-            <TableHead>Modul (Opsional)</TableHead>
+            <TableHead class="cursor-pointer hover:text-primary transition-colors" @click="toggleSort('module_id')">
+              <div class="flex items-center gap-1">
+                Modul (Opsional)
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'module_id'" class="w-3.5 h-3.5" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3.5 h-3.5 text-primary" />
+                <ArrowDownIcon v-else class="w-3.5 h-3.5 text-primary" />
+              </div>
+            </TableHead>
             <TableHead class="text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="q in questions" :key="q.id">
+          <TableRow v-for="q in paginatedData" :key="q.id">
             <TableCell class="font-medium line-clamp-2">{{ q.content }}</TableCell>
             <TableCell>
               <Badge variant="outline">{{ q.type.replace('_', ' ').toUpperCase() }}</Badge>
+            </TableCell>
+             <TableCell>
+              <span class="font-medium text-blue-600">{{ q.weight || 1.0 }}</span>
             </TableCell>
             <TableCell>
               <div v-if="q.image_url" class="relative w-16 h-12 rounded overflow-hidden border border-slate-200">
@@ -77,26 +118,36 @@
               </Button>
             </TableCell>
           </TableRow>
-          <TableRow v-if="questions.length === 0">
-             <TableCell colspan="5" class="text-center h-24">Belum ada soal dibuat.</TableCell>
+          <TableRow v-if="filteredQuestions.length === 0">
+             <TableCell colspan="6" class="text-center h-24">Tidak ada soal yang ditemukan.</TableCell>
           </TableRow>
         </TableBody>
       </Table>
+      
+      <DataTablePagination 
+        v-if="filteredQuestions.length > 0"
+        :total="totalItems"
+        v-model:pageSize="pageSize"
+        v-model:currentPage="currentPage"
+      />
     </Card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import client from '@/api/client'
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { PlusIcon, EditIcon, TrashIcon, UploadIcon, DownloadIcon } from 'lucide-vue-next'
+import { PlusIcon, EditIcon, TrashIcon, UploadIcon, DownloadIcon, ArrowUpDownIcon, ArrowUpIcon, ArrowDownIcon, SearchIcon } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -112,6 +163,29 @@ const modules = ref<any[]>([])
 const isImportModalOpen = ref(false)
 const importFile = ref<File | null>(null)
 const isImporting = ref(false)
+const search = ref('')
+const moduleFilter = ref('')
+
+const filteredQuestions = computed(() => {
+  return questions.value.filter(q => {
+    const matchesSearch = q.content.toLowerCase().includes(search.value.toLowerCase())
+    if (!matchesSearch) return false
+    
+    if (moduleFilter.value === 'global') return !q.module_id
+    if (moduleFilter.value && q.module_id !== moduleFilter.value) return false
+    
+    return true
+  })
+})
+
+const {
+  pageSize,
+  currentPage,
+  sortConfig,
+  toggleSort,
+  paginatedData,
+  totalItems
+} = useDataTable(filteredQuestions)
 
 const showSuccess = (message: string) => {
   toast.success(message)

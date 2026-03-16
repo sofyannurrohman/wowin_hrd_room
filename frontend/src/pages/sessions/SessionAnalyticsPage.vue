@@ -141,7 +141,7 @@
             </thead>
             <tbody class="divide-y divide-slate-50">
               <tr
-                v-for="(res, idx) in filteredResults"
+                v-for="(res, idx) in paginatedData"
                 :key="res.id"
                 class="hover:bg-slate-50/50 transition-colors"
                 :class="idx === 0 && sortBy === 'score_desc' ? 'bg-amber-50/40' : ''"
@@ -149,11 +149,11 @@
                 <!-- Rank -->
                 <td class="px-6 py-4">
                   <div class="flex items-center justify-center w-8 h-8 rounded-full font-black text-sm"
-                    :class="getRankStyle(idx + 1)">
-                    {{ idx + 1 }}
+                    :class="getRankStyle((currentPage - 1) * pageSize + idx + 1)">
+                    {{ (currentPage - 1) * pageSize + idx + 1 }}
                   </div>
                 </td>
-
+                
                 <!-- Name -->
                 <td class="px-4 py-4">
                   <div class="flex items-center gap-3">
@@ -251,6 +251,14 @@
               </tr>
             </tbody>
           </table>
+          
+          <div v-if="filteredResults.length > 0" class="p-4 border-t border-slate-100 bg-slate-50/30">
+            <DataTablePagination 
+              :total="totalItems"
+              v-model:pageSize="pageSize"
+              v-model:currentPage="currentPage"
+            />
+          </div>
         </div>
       </div>
 
@@ -301,6 +309,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import client from '@/api/client'
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -432,6 +442,13 @@ const filteredResults = computed(() => {
   }
   return list
 })
+
+const {
+  pageSize,
+  currentPage,
+  paginatedData,
+  totalItems
+} = useDataTable(filteredResults)
 
 const getScoreColor = (score: number) => {
   if (score >= 80) return 'text-green-600'

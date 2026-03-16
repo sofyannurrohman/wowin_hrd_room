@@ -22,6 +22,8 @@ const delegatedProps = reactiveOmit(props, "toastOptions")
       },
     }"
     v-bind="delegatedProps"
+    rich-colors
+    expand
   >
     <template #success-icon>
       <CircleCheckIcon class="size-4" />

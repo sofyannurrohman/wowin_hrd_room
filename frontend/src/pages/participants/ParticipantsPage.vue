@@ -1,44 +1,7 @@
 <template>
   <div class="space-y-6 max-w-[1200px] mx-auto pb-10">
 
-    <!-- Toast Notification -->
-    <Transition
-      enter-active-class="transition-all duration-300 ease-out"
-      enter-from-class="opacity-0 -translate-y-3"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-all duration-200 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 -translate-y-3"
-    >
-      <div
-        v-if="toast.show"
-        class="fixed top-5 right-5 z-[9999] flex items-start gap-3 px-5 py-4 rounded-2xl shadow-2xl min-w-[280px] max-w-sm border"
-        :class="toast.type === 'success'
-          ? 'bg-green-50 border-green-200 text-green-800'
-          : 'bg-red-50 border-red-200 text-red-800'"
-      >
-        <!-- Icon -->
-        <div class="mt-0.5 shrink-0">
-          <svg v-if="toast.type === 'success'" class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-          <svg v-else class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </div>
-        <!-- Message -->
-        <div class="flex-1">
-          <p class="font-bold text-sm">{{ toast.type === 'success' ? 'Berhasil' : 'Gagal' }}</p>
-          <p class="text-sm mt-0.5 opacity-80">{{ toast.message }}</p>
-        </div>
-        <!-- Close -->
-        <button @click="toast.show = false" class="text-current opacity-50 hover:opacity-100 transition-opacity mt-0.5">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </Transition>
+
 
     <!-- Header -->
     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -146,17 +109,45 @@
       <Table v-else>
         <TableHeader>
           <TableRow class="border-b border-slate-100 hover:bg-transparent">
-            <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-6">Nama & Posisi</TableHead>
+            <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-6 cursor-pointer hover:text-blue-600 transition-colors" @click="toggleSort('name')">
+              <div class="flex items-center gap-1">
+                Nama & Posisi
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'name'" class="w-3 h-3" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3 h-3 text-blue-600" />
+                <ArrowDownIcon v-else class="w-3 h-3 text-blue-600" />
+              </div>
+            </TableHead>
             <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Kontak & Gaji</TableHead>
-            <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-4 whitespace-nowrap">Sesi Terakhir</TableHead>
-            <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-4 whitespace-nowrap">Avg Score</TableHead>
-            <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Status</TableHead>
+            <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-4 whitespace-nowrap cursor-pointer hover:text-blue-600 transition-colors" @click="toggleSort('last_session_name')">
+              <div class="flex items-center gap-1">
+                Sesi Terakhir
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'last_session_name'" class="w-3 h-3" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3 h-3 text-blue-600" />
+                <ArrowDownIcon v-else class="w-3 h-3 text-blue-600" />
+              </div>
+            </TableHead>
+            <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-4 whitespace-nowrap cursor-pointer hover:text-blue-600 transition-colors" @click="toggleSort('avg_score')">
+              <div class="flex items-center gap-1">
+                Avg Score
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'avg_score'" class="w-3 h-3" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3 h-3 text-blue-600" />
+                <ArrowDownIcon v-else class="w-3 h-3 text-blue-600" />
+              </div>
+            </TableHead>
+            <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-4 cursor-pointer hover:text-blue-600 transition-colors" @click="toggleSort('status')">
+              <div class="flex items-center gap-1">
+                Status
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'status'" class="w-3 h-3" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3 h-3 text-blue-600" />
+                <ArrowDownIcon v-else class="w-3 h-3 text-blue-600" />
+              </div>
+            </TableHead>
             <TableHead class="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-4 px-6 text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <TableRow
-            v-for="p in paginatedParticipants"
+            v-for="p in paginatedData"
             :key="p.id"
             class="border-b border-slate-100 transition-colors hover:bg-slate-50/50 group"
           >
@@ -231,19 +222,12 @@
       </Table>
 
       <!-- Pagination -->
-      <div v-if="filteredParticipants.length > 0 && !loading" class="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-slate-50/30">
-        <div>Showing <strong>{{ (currentPage - 1) * perPage + 1 }}</strong> – <strong>{{ Math.min(currentPage * perPage, filteredParticipants.length) }}</strong> of <strong>{{ filteredParticipants.length }}</strong></div>
-        <div class="flex gap-1 items-center">
-          <Button variant="outline" size="sm" class="h-8 border-slate-200 text-slate-600 bg-white" :disabled="currentPage === 1" @click="currentPage--">Previous</Button>
-          <Button
-            v-for="page in totalPages" :key="page"
-            size="sm"
-            :variant="page === currentPage ? 'default' : 'outline'"
-            :class="page === currentPage ? 'h-8 w-8 p-0 bg-blue-600 hover:bg-blue-700 text-white font-bold' : 'h-8 w-8 p-0 border-slate-200 bg-white text-slate-600'"
-            @click="currentPage = page"
-          >{{ page }}</Button>
-          <Button variant="outline" size="sm" class="h-8 border-slate-200 text-slate-600 bg-white" :disabled="currentPage === totalPages" @click="currentPage++">Next</Button>
-        </div>
+      <div v-if="filteredParticipants.length > 0 && !loading" class="p-4 border-t border-slate-100 bg-slate-50/30">
+        <DataTablePagination 
+          :total="totalItems"
+          v-model:pageSize="pageSize"
+          v-model:currentPage="currentPage"
+        />
       </div>
     </Card>
 
@@ -307,9 +291,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import client from '@/api/client'
+import { toast } from "vue-sonner"
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -318,27 +305,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   SearchIcon, UserPlusIcon, UsersIcon, UserCheckIcon,
   BarChart2Icon, ClockIcon, PencilIcon, Trash2Icon,
-  DownloadIcon, UploadIcon, EyeIcon
+  DownloadIcon, UploadIcon, EyeIcon, ArrowUpDownIcon, ArrowUpIcon, ArrowDownIcon
 } from 'lucide-vue-next'
 
 const router = useRouter()
 
-// ─── Toast ────────────────────────────────────────────────────────
-const toast = ref({ show: false, type: 'success' as 'success' | 'error', message: '' })
-let toastTimer: ReturnType<typeof setTimeout> | null = null
 const showToast = (type: 'success' | 'error', message: string) => {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { show: true, type, message }
-  toastTimer = setTimeout(() => { toast.value.show = false }, 4000)
+  if (type === 'success') {
+    toast.success(message)
+  } else {
+    toast.error(message)
+  }
 }
 
-// ─── State ────────────────────────────────────────────────────────
 const participants = ref<any[]>([])
 const loading = ref(true)
 const searchQuery = ref('')
 const filterStatus = ref('')
-const currentPage = ref(1)
-const perPage = 10
 
 // ─── CSV Import Refs ──────────────────────────────────────────────
 const csvInput = ref<HTMLInputElement | null>(null)
@@ -416,32 +399,27 @@ const handleCsvUpload = async (event: Event) => {
   }
 }
 
-// ─── Filtering & Pagination ───────────────────────────────────────
 const filteredParticipants = computed(() => {
   const q = searchQuery.value.toLowerCase()
-  let list = participants.value
-
-  if (q) {
-    list = list.filter(p =>
-      (p.name || '').toLowerCase().includes(q) ||
-      (p.email || '').toLowerCase().includes(q)
-    )
-  }
-  if (filterStatus.value) {
-    list = list.filter(p => (p.status || 'Active') === filterStatus.value)
-  }
-  return list
+  return participants.value.filter(p => {
+    const matchesSearch = (p.name || '').toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q)
+    if (!matchesSearch) return false
+    
+    if (filterStatus.value && (p.status || 'Active') !== filterStatus.value) {
+      return false
+    }
+    return true
+  })
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredParticipants.value.length / perPage)))
-
-const paginatedParticipants = computed(() => {
-  const start = (currentPage.value - 1) * perPage
-  return filteredParticipants.value.slice(start, start + perPage)
-})
-
-// Reset page on filter change
-watch([searchQuery, filterStatus], () => { currentPage.value = 1 })
+const {
+  pageSize,
+  currentPage,
+  sortConfig,
+  toggleSort,
+  paginatedData,
+  totalItems
+} = useDataTable(filteredParticipants)
 
 // ─── CRUD ─────────────────────────────────────────────────────────
 const showModal = ref(false)
@@ -545,9 +523,16 @@ const getScoreBarColor = (score: number) => {
 }
 
 const downloadCV = (url: string) => {
-  const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
-  // Remove /api from base url if it exists, since uploads are served at root level
-  const baseUrl = backendUrl.replace('/api', '')
-  window.open(`${baseUrl}${url}`, '_blank')
+  if (!url) return
+  
+  // Use VITE_API_URL if provided (removing /api for static uploads), 
+  // otherwise fallback to a relative path which works via Nginx/Vite proxy.
+  const backendUrl = import.meta.env.VITE_API_URL
+  if (backendUrl) {
+    const baseUrl = backendUrl.replace(/\/api$/, '')
+    window.open(`${baseUrl}${url}`, '_blank')
+  } else {
+    window.open(url, '_blank')
+  }
 }
 </script>

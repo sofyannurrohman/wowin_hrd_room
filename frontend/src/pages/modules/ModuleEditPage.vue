@@ -32,6 +32,22 @@
           </div>
 
           <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              Total Bobot <span class="text-red-500">*</span>
+            </label>
+            <input
+              v-model.number="form.total_weight"
+              type="number"
+              min="1"
+              step="0.01"
+              required
+              class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none"
+              placeholder="100"
+            />
+            <p class="text-xs text-slate-500 mt-1">Total maksimal poin untuk semua soal di dalam modul ini.</p>
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
             <textarea
               v-model="form.description"
@@ -70,6 +86,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeftIcon, SaveIcon, Loader2Icon } from 'lucide-vue-next'
 import client from '@/api/client'
+import { toast } from 'vue-sonner'
 
 const router = useRouter()
 const route = useRoute()
@@ -78,7 +95,8 @@ const loading = ref(true)
 
 const form = ref({
   name: '',
-  description: ''
+  description: '',
+  total_weight: 100
 })
 
 const fetchModule = async () => {
@@ -86,8 +104,9 @@ const fetchModule = async () => {
     const res = await client.get(`/modules/${route.params.id}`)
     form.value.name = res.data.module.name
     form.value.description = res.data.module.description
+    form.value.total_weight = res.data.module.total_weight || 100
   } catch (error) {
-    alert('Failed to load module')
+    toast.error('Failed to load module')
     router.push('/modules')
   } finally {
     loading.value = false
@@ -98,9 +117,10 @@ const submit = async () => {
   saving.value = true
   try {
     await client.put(`/modules/${route.params.id}`, form.value)
+    toast.success('Module successfully updated')
     router.push('/modules')
   } catch (error) {
-    alert('Failed to update module')
+    toast.error('Failed to update module')
     console.error(error)
   } finally {
     saving.value = false

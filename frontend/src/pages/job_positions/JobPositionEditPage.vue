@@ -6,10 +6,7 @@
 
     <Card>
       <CardContent class="pt-6 space-y-6">
-        <Alert v-if="alertMessage" :variant="alertVariant">
-          <AlertTitle>{{ alertVariant === 'destructive' ? 'Error' : 'Berhasil' }}</AlertTitle>
-          <AlertDescription>{{ alertMessage }}</AlertDescription>
-        </Alert>
+
 
         <div v-if="fetching" class="text-muted-foreground py-10 text-center">
           Memuat data posisi...
@@ -49,8 +46,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
+import { toast } from 'vue-sonner'
 
 const router = useRouter()
 const route = useRoute()
@@ -63,17 +60,13 @@ const form = ref({
 
 const loading = ref(false)
 const fetching = ref(true)
-const alertMessage = ref('')
-const alertVariant = ref<'default' | 'destructive'>('default')
 
 const showSuccess = (message: string) => {
-  alertVariant.value = 'default'
-  alertMessage.value = message
+  toast.success(message)
 }
 
 const showError = (message: string) => {
-  alertVariant.value = 'destructive'
-  alertMessage.value = message
+  toast.error(message)
 }
 
 onMounted(async () => {
@@ -96,7 +89,6 @@ const submit = async () => {
   }
 
   loading.value = true
-  alertMessage.value = ''
   
   try {
     await client.put(`/job-positions/${positionId}`, {

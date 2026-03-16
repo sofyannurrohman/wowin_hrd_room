@@ -348,11 +348,12 @@ func (h *ExamHandler) GetViolations(c *gin.Context) {
 
 type QuestionHTTPHandler struct {
 	qRepo     *repository.QuestionRepository
+	mRepo     *repository.ModuleRepository
 	uploadDir string
 }
 
-func NewQuestionHTTPHandler(qRepo *repository.QuestionRepository, uploadDir string) *QuestionHTTPHandler {
-	return &QuestionHTTPHandler{qRepo: qRepo, uploadDir: uploadDir}
+func NewQuestionHTTPHandler(qRepo *repository.QuestionRepository, mRepo *repository.ModuleRepository, uploadDir string) *QuestionHTTPHandler {
+	return &QuestionHTTPHandler{qRepo: qRepo, mRepo: mRepo, uploadDir: uploadDir}
 }
 
 // POST /api/questions
@@ -372,13 +373,35 @@ func (h *QuestionHTTPHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid module_id"})
 		return
 	}
+	weightStr := c.PostForm("weight")
+	weight := 1.0
+	if weightStr != "" {
+		fmt.Sscanf(weightStr, "%f", &weight)
+	}
+
+	module, err := h.mRepo.FindByID(c.Request.Context(), moduleID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "modul tidak ditemukan"})
+		return
+	}
+
+	currentWeight, err := h.qRepo.GetTotalWeightByModule(c.Request.Context(), moduleID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menghitung bobot"})
+		return
+	}
+
+	if currentWeight+weight > module.TotalWeight {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Bobot pertanyaan melebihi batas maksimal modul (Sisa: %.2f)", module.TotalWeight-currentWeight)})
+		return
+	}
 
 	q := &domain.Question{
 		ID:                   uuid.New(),
 		ModuleID:             moduleID,
 		Type:                 qType,
 		Content:              content,
-		Weight:               1.0,
+		Weight:               weight,
 		RequiresManualReview: qType == domain.QuestionTypePsychological || qType == domain.QuestionTypeShortAnswer,
 	}
 
@@ -500,6 +523,23 @@ func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 	if content := c.PostForm("content"); content != "" {
 		q.Content = content
 	}
+	if weightStr := c.PostForm("weight"); weightStr != "" {
+		var newWeight float64
+		if _, err := fmt.Sscanf(weightStr, "%f", &newWeight); err == nil {
+			if newWeight != q.Weight {
+				module, err := h.mRepo.FindByID(c.Request.Context(), q.ModuleID)
+				if err == nil {
+					currentTotal, _ := h.qRepo.GetTotalWeightByModule(c.Request.Context(), q.ModuleID)
+					weightDifference := newWeight - q.Weight
+					if currentTotal+weightDifference > module.TotalWeight {
+						c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Bobot pertanyaan melebihi batas maksimal modul (Sisa: %.2f)", module.TotalWeight-currentTotal)})
+						return
+					}
+				}
+				q.Weight = newWeight
+			}
+		}
+	}
 
 	// Handle new image upload
 	file, header, err := c.Request.FormFile("image")
@@ -511,6 +551,12 @@ func (h *QuestionHTTPHandler) Update(c *gin.Context) {
 		filename := fmt.Sprintf("%s_%s%s", q.ID.String(), time.Now().Format("20060102150405"), ext)
 		dstPath := filepath.Join(imgDir, filename)
 		if err := c.SaveUploadedFile(header, dstPath); err == nil {
+			// Delete old image if it exists
+			if q.ImageURL != nil && *q.ImageURL != "" {
+				oldRelPath := strings.TrimPrefix(*q.ImageURL, "/uploads")
+				oldFullPath := filepath.Join(h.uploadDir, oldRelPath)
+				os.Remove(oldFullPath)
+			}
 			imgURL := "/uploads/questions/" + filename
 			q.ImageURL = &imgURL
 		}
@@ -572,6 +618,9 @@ func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
 	successCount := 0
 	errorCount := 0
 
+	moduleCache := make(map[uuid.UUID]*domain.Module)
+	moduleCurrentWeights := make(map[uuid.UUID]float64)
+
 	// Skip header (row 0)
 	for i := 1; i < len(records); i++ {
 		row := records[i]
@@ -588,29 +637,59 @@ func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
 
 		qType := normalizeQuestionType(row[1])
 
-
 		moduleIDStr := strings.TrimSpace(row[2])
 		var moduleID uuid.UUID
 		if moduleIDStr != "" {
 			parsedID, err := uuid.Parse(moduleIDStr)
 			if err == nil {
 				moduleID = parsedID
-			} else {
-				// We can try to match by name later, but for now ID only as per plan
 			}
 		}
 
-		// no Explanation field in domain.Question currently
-		// if len(row) > 9 {
-		// 	explanation = strings.TrimSpace(row[9])
-		// }
+		weight := 1.0
+		if len(row) > 9 {
+			wStr := strings.TrimSpace(row[9])
+			if wStr != "" {
+				fmt.Sscanf(wStr, "%f", &weight)
+			}
+		}
+
+		// Validate module and its weight limit
+		if moduleID == uuid.Nil {
+			errorCount++
+			continue
+		}
+
+		mod, exists := moduleCache[moduleID]
+		if !exists {
+			var err error
+			mod, err = h.mRepo.FindByID(c.Request.Context(), moduleID)
+			if err != nil {
+				errorCount++
+				continue
+			}
+			moduleCache[moduleID] = mod
+
+			currW, err := h.qRepo.GetTotalWeightByModule(c.Request.Context(), moduleID)
+			if err != nil {
+				errorCount++
+				continue
+			}
+			moduleCurrentWeights[moduleID] = currW
+		}
+
+		if moduleCurrentWeights[moduleID]+weight > mod.TotalWeight {
+			// Skip this question as it exceeds module weight limit
+			errorCount++
+			continue
+		}
 
 		q := &domain.Question{
 			ID:                   uuid.New(),
 			Type:                 qType,
 			Content:              content,
 			ModuleID:             moduleID,
-			Weight:               1.0,
+			Weight:               weight,
 			RequiresManualReview: qType == domain.QuestionTypePsychological || qType == domain.QuestionTypeShortAnswer,
 		}
 
@@ -618,6 +697,7 @@ func (h *QuestionHTTPHandler) ImportCSV(c *gin.Context) {
 			errorCount++
 			continue
 		}
+		moduleCurrentWeights[moduleID] += weight
 
 		// Handle Options for multiple choice/select/true-false/short-answer
 		if qType == domain.QuestionTypeMultipleChoice || qType == domain.QuestionTypeTrueFalse || qType == domain.QuestionTypeShortAnswer {
@@ -694,6 +774,17 @@ func (h *QuestionHTTPHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid question id"})
 		return
 	}
+
+	// Fetch question to check for image
+	q, err := h.qRepo.FindByID(c.Request.Context(), qID)
+	if err == nil && q.ImageURL != nil && *q.ImageURL != "" {
+		// Attempt to delete image file
+		// Image url format is usually /uploads/questions/filename
+		relPath := strings.TrimPrefix(*q.ImageURL, "/uploads")
+		fullPath := filepath.Join(h.uploadDir, relPath)
+		os.Remove(fullPath)
+	}
+
 	if err := h.qRepo.Delete(c.Request.Context(), qID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

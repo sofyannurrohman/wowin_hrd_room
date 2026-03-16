@@ -45,16 +45,39 @@
       <Table>
         <TableHeader>
           <TableRow class="border-b border-slate-100 hover:bg-transparent">
-            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-6">Session Name</TableHead>
-            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Start Date</TableHead>
-            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">End Date</TableHead>
-            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4 text-center">Participants</TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-6 cursor-pointer hover:text-blue-600 transition-colors" @click="toggleSort('name')">
+              <div class="flex items-center gap-1">
+                Session Name
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'name'" class="w-3 h-3" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3 h-3 text-blue-600" />
+                <ArrowDownIcon v-else class="w-3 h-3 text-blue-600" />
+              </div>
+            </TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4 cursor-pointer hover:text-blue-600 transition-colors" @click="toggleSort('schedule')">
+              <div class="flex items-center gap-1">
+                Start Date
+                <ArrowUpDownIcon v-if="sortConfig.key !== 'schedule'" class="w-3 h-3" />
+                <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3 h-3 text-blue-600" />
+                <ArrowDownIcon v-else class="w-3 h-3 text-blue-600" />
+              </div>
+            </TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4 whitespace-nowrap">End Date</TableHead>
+            <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4 text-center cursor-pointer hover:text-blue-600 transition-colors" @click="toggleSort('total_participant_count')">
+              <div class="flex flex-col items-center gap-0.5">
+                Participants
+                <div class="flex items-center gap-1">
+                  <ArrowUpDownIcon v-if="sortConfig.key !== 'total_participant_count'" class="w-3 h-3" />
+                  <ArrowUpIcon v-else-if="sortConfig.direction === 'asc'" class="w-3 h-3 text-blue-600" />
+                  <ArrowDownIcon v-else class="w-3 h-3 text-blue-600" />
+                </div>
+              </div>
+            </TableHead>
             <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-4">Status</TableHead>
             <TableHead class="text-xs font-bold text-slate-500 uppercase tracking-wider py-4 px-6 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="s in filteredSessions" :key="s.id" class="border-b border-slate-100 transition-colors hover:bg-slate-50/50 group">
+          <TableRow v-for="s in paginatedData" :key="s.id" class="border-b border-slate-100 transition-colors hover:bg-slate-50/50 group">
             <TableCell class="py-4 px-6">
               <div class="font-bold text-slate-800 text-sm">{{ s.name }}</div>
               <div class="text-[12px] text-slate-400 mt-0.5 font-mono">{{ s.id.slice(0, 8).toUpperCase() }}</div>
@@ -96,21 +119,26 @@
             </TableCell>
           </TableRow>
 
-          <TableRow v-if="filteredSessions.length === 0">
+          <TableRow v-if="paginatedData.length === 0">
             <TableCell colspan="6" class="text-center h-48 text-slate-500">
               <div class="flex flex-col items-center justify-center space-y-3">
                 <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                   <SearchIcon class="w-6 h-6" />
                 </div>
-                <p>Tidak ada sesi yang dipadankan dengan pencarian.</p>
+                <p>Tidak ada sesi yang ditemukan.</p>
               </div>
             </TableCell>
           </TableRow>
         </TableBody>
       </Table>
 
-      <div v-if="filteredSessions.length > 0" class="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 bg-slate-50/30">
-        <div>Showing <strong>{{ filteredSessions.length }}</strong> results</div>
+      <div class="p-4 border-t border-slate-100 bg-slate-50/30">
+        <DataTablePagination 
+          v-if="filteredSessions.length > 0"
+          :total="totalItems"
+          v-model:pageSize="pageSize"
+          v-model:currentPage="currentPage"
+        />
       </div>
     </Card>
 
@@ -199,13 +227,15 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { toast } from 'vue-sonner'
+import { useDataTable } from '@/composables/useDataTable'
+import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SearchIcon, PlusIcon, FilterIcon, EyeIcon, Edit2Icon, Trash2Icon, XIcon } from 'lucide-vue-next'
+import { SearchIcon, PlusIcon, FilterIcon, EyeIcon, Edit2Icon, Trash2Icon, XIcon, ArrowUpDownIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-vue-next'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const router = useRouter()
@@ -213,10 +243,6 @@ const sessionStore = useSessionStore()
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
-
-onMounted(async () => {
-  await sessionStore.fetchSessions()
-})
 
 const filteredSessions = computed(() => {
   return sessionStore.sessions.filter((s: any) => {
@@ -229,6 +255,19 @@ const filteredSessions = computed(() => {
     return true
   })
 })
+
+onMounted(async () => {
+  await sessionStore.fetchSessions()
+})
+
+const {
+  pageSize,
+  currentPage,
+  sortConfig,
+  toggleSort,
+  paginatedData,
+  totalItems
+} = useDataTable(filteredSessions)
 
 const clearFilters = () => {
   searchQuery.value = ''
