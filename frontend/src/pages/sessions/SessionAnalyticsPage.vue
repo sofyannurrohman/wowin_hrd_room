@@ -71,16 +71,16 @@
         </div>
         <div class="flex gap-4 mt-4 flex-wrap">
           <div class="flex items-center gap-1.5 text-xs text-slate-600">
-            <span class="w-3 h-3 rounded-sm bg-red-300 inline-block"></span> 0-39 (Kurang)
+            <span class="w-3 h-3 rounded-sm bg-red-300 inline-block"></span> 0-39% (Kurang)
           </div>
           <div class="flex items-center gap-1.5 text-xs text-slate-600">
-            <span class="w-3 h-3 rounded-sm bg-orange-300 inline-block"></span> 40-59 (Cukup)
+            <span class="w-3 h-3 rounded-sm bg-orange-300 inline-block"></span> 40-59% (Cukup)
           </div>
           <div class="flex items-center gap-1.5 text-xs text-slate-600">
-            <span class="w-3 h-3 rounded-sm bg-blue-300 inline-block"></span> 60-79 (Baik)
+            <span class="w-3 h-3 rounded-sm bg-blue-300 inline-block"></span> 60-79% (Baik)
           </div>
           <div class="flex items-center gap-1.5 text-xs text-slate-600">
-            <span class="w-3 h-3 rounded-sm bg-green-400 inline-block"></span> 80-100 (Sangat Baik)
+            <span class="w-3 h-3 rounded-sm bg-green-400 inline-block"></span> 80-100% (Sangat Baik)
           </div>
         </div>
       </div>
@@ -182,11 +182,11 @@
 
                 <!-- Score Bar -->
                 <td class="px-4 py-4">
-                  <div class="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden" :title="`Max Score: ${maxPossibleScore}`">
                     <div
                       class="h-full rounded-full transition-all duration-700"
                       :class="getScoreBarColor(res.total_score)"
-                      :style="{ width: `${Math.min(100, (res.total_score / maxScore) * 100)}%` }"
+                      :style="{ width: `${Math.min(100, (res.total_score / maxPossibleScore) * 100)}%` }"
                     ></div>
                   </div>
                 </td>
@@ -325,6 +325,7 @@ const sessionId = route.params.id as string
 const sessionName = ref('Loading...')
 const results = ref<any[]>([])
 const violations = ref<any[]>([])
+const sessionModules = ref<any[]>([])
 const loading = ref(true)
 const search = ref('')
 const filterStatus = ref('')
@@ -333,14 +334,16 @@ const finalizing = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const [sRes, rRes, vRes] = await Promise.all([
+    const [sRes, rRes, vRes, mRes] = await Promise.all([
       client.get(`/sessions/${sessionId}`),
       client.get(`/sessions/${sessionId}/results`),
-      client.get(`/sessions/${sessionId}/violations`)
+      client.get(`/sessions/${sessionId}/violations`),
+      client.get(`/sessions/${sessionId}/modules`)
     ])
     sessionName.value = sRes.data.name
     results.value = rRes.data || []
     violations.value = vRes.data || []
+    sessionModules.value = mRes.data || []
   } catch (e) {
     console.error('Failed to load analytics', e)
   } finally {
@@ -354,6 +357,11 @@ const violationsByParticipant = computed(() => {
     map[v.participant_id] = (map[v.participant_id] || 0) + 1
   }
   return map
+})
+
+const maxPossibleScore = computed(() => {
+  const total = sessionModules.value.reduce((sum, m) => sum + (m.total_weight || 0), 0)
+  return total > 0 ? total : 100
 })
 
 const maxScore = computed(() => {
@@ -401,22 +409,24 @@ const summaryStats = computed(() => [
 ])
 
 const scoreBuckets = computed(() => {
+  const max = maxPossibleScore.value
   const buckets = [
-    { label: '0-9', min: 0, max: 10, count: 0, color: 'bg-red-300' },
-    { label: '10-19', min: 10, max: 20, count: 0, color: 'bg-red-300' },
-    { label: '20-29', min: 20, max: 30, count: 0, color: 'bg-red-300' },
-    { label: '30-39', min: 30, max: 40, count: 0, color: 'bg-red-300' },
-    { label: '40-49', min: 40, max: 50, count: 0, color: 'bg-orange-300' },
-    { label: '50-59', min: 50, max: 60, count: 0, color: 'bg-orange-300' },
-    { label: '60-69', min: 60, max: 70, count: 0, color: 'bg-blue-300' },
-    { label: '70-79', min: 70, max: 80, count: 0, color: 'bg-blue-300' },
-    { label: '80-89', min: 80, max: 90, count: 0, color: 'bg-green-400' },
-    { label: '90-100', min: 90, max: 101, count: 0, color: 'bg-green-600' },
+    { label: '0-9%', min: 0, max: 10, count: 0, color: 'bg-red-300' },
+    { label: '10-19%', min: 10, max: 20, count: 0, color: 'bg-red-300' },
+    { label: '20-29%', min: 20, max: 30, count: 0, color: 'bg-red-300' },
+    { label: '30-39%', min: 30, max: 40, count: 0, color: 'bg-red-300' },
+    { label: '40-49%', min: 40, max: 50, count: 0, color: 'bg-orange-300' },
+    { label: '50-59%', min: 50, max: 60, count: 0, color: 'bg-orange-300' },
+    { label: '60-69%', min: 60, max: 70, count: 0, color: 'bg-blue-300' },
+    { label: '70-79%', min: 70, max: 80, count: 0, color: 'bg-blue-300' },
+    { label: '80-89%', min: 80, max: 90, count: 0, color: 'bg-green-400' },
+    { label: '90-100%', min: 90, max: 101, count: 0, color: 'bg-green-600' },
   ]
   for (const r of results.value) {
     const score = r.total_score || 0
+    const percent = Math.min((score / max) * 100, 100)
     for (const bucket of buckets) {
-      if (score >= bucket.min && score < bucket.max) { bucket.count++; break }
+      if (percent >= bucket.min && percent < bucket.max) { bucket.count++; break }
     }
   }
   return buckets
@@ -451,16 +461,18 @@ const {
 } = useDataTable(filteredResults)
 
 const getScoreColor = (score: number) => {
-  if (score >= 80) return 'text-green-600'
-  if (score >= 60) return 'text-blue-600'
-  if (score >= 40) return 'text-orange-500'
+  const percent = (score / maxPossibleScore.value) * 100
+  if (percent >= 80) return 'text-green-600'
+  if (percent >= 60) return 'text-blue-600'
+  if (percent >= 40) return 'text-orange-500'
   return 'text-red-600'
 }
 
 const getScoreBarColor = (score: number) => {
-  if (score >= 80) return 'bg-green-500'
-  if (score >= 60) return 'bg-blue-500'
-  if (score >= 40) return 'bg-orange-400'
+  const percent = (score / maxPossibleScore.value) * 100
+  if (percent >= 80) return 'bg-green-500'
+  if (percent >= 60) return 'bg-blue-500'
+  if (percent >= 40) return 'bg-orange-400'
   return 'bg-red-400'
 }
 
@@ -473,21 +485,23 @@ const getRankStyle = (rank: number) => {
 
 const getRecommendation = (res: any) => {
   const score = res.total_score || 0
+  const percent = (score / maxPossibleScore.value) * 100
   const viols = violationsByParticipant.value[res.participant_id] || 0
-  if (score >= 80 && viols === 0) return '⭐ Sangat Disarankan'
-  if (score >= 80 && viols <= 2) return '✅ Disarankan'
-  if (score >= 60 && viols <= 3) return '🟡 Pertimbangkan'
-  if (score >= 40) return '⚠️ Kurang'
+  if (percent >= 80 && viols === 0) return '⭐ Sangat Disarankan'
+  if (percent >= 80 && viols <= 2) return '✅ Disarankan'
+  if (percent >= 60 && viols <= 3) return '🟡 Pertimbangkan'
+  if (percent >= 40) return '⚠️ Kurang'
   return '❌ Tidak Disarankan'
 }
 
 const getRecommendationStyle = (res: any) => {
   const score = res.total_score || 0
+  const percent = (score / maxPossibleScore.value) * 100
   const viols = violationsByParticipant.value[res.participant_id] || 0
-  if (score >= 80 && viols === 0) return 'bg-green-100 text-green-800'
-  if (score >= 80) return 'bg-teal-100 text-teal-800'
-  if (score >= 60) return 'bg-yellow-100 text-yellow-800'
-  if (score >= 40) return 'bg-orange-100 text-orange-700'
+  if (percent >= 80 && viols === 0) return 'bg-green-100 text-green-800'
+  if (percent >= 80) return 'bg-teal-100 text-teal-800'
+  if (percent >= 60) return 'bg-yellow-100 text-yellow-800'
+  if (percent >= 40) return 'bg-orange-100 text-orange-700'
   return 'bg-red-100 text-red-700'
 }
 

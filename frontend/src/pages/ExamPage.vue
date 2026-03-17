@@ -160,8 +160,9 @@
               <img
                 v-if="currentQuestion.image_url"
                 :src="currentQuestion.image_url"
-                class="mt-4 rounded-lg max-h-56 object-contain border border-gray-200"
+                class="mt-4 rounded-lg max-h-56 object-contain border border-gray-200 cursor-zoom-in hover:opacity-90 transition-opacity"
                 alt="Gambar soal"
+                @click="zoomedImageUrl = currentQuestion.image_url"
               />
             </div>
 
@@ -346,6 +347,29 @@
       </div>
     </div>
 
+    <!-- ─── Image Zoom Overlay ─────────────────────────────────────── -->
+    <div
+      v-if="zoomedImageUrl"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      @click="zoomedImageUrl = null"
+    >
+      <div class="relative max-w-5xl max-h-[90vh] w-full flex items-center justify-center">
+        <img
+          :src="zoomedImageUrl"
+          class="max-w-full max-h-full object-contain rounded-xl shadow-2xl cursor-zoom-out"
+          alt="Zoomed image"
+        />
+        <button 
+          class="absolute -top-4 -right-4 text-white bg-black/50 hover:bg-black/80 ring-2 ring-white/20 rounded-full p-2 transition-colors" 
+          @click.stop="zoomedImageUrl = null"
+        >
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -365,6 +389,7 @@ const examStore = useExamStore()
 const sessionId = route.params.sessionId as string
 const showSubmitDialog = ref(false)
 const showingTransition = ref(false)
+const zoomedImageUrl = ref<string | null>(null)
 
 // ─── Module helpers ───────────────────────────────────────────────
 const isLastModule = computed(() => examStore.currentModuleIndex >= examStore.moduleGroups.length - 1)
