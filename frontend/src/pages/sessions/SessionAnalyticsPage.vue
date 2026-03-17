@@ -323,7 +323,7 @@ import {
   TrophyIcon, BarChart3Icon, EyeIcon, UsersIcon, ClipboardListIcon
 } from 'lucide-vue-next'
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 const router = useRouter()
 const route = useRoute()
@@ -588,7 +588,7 @@ const exportPDF = () => {
     getRecommendation(r).replace(/[⭐✅🟡⚠️❌]/g, '').trim()
   ])
 
-  ;(doc as any).autoTable({
+  autoTable(doc, {
     startY: 85,
     head: [tableColumn],
     body: tableRows,
