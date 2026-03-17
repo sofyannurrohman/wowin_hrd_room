@@ -16,9 +16,14 @@
         <Badge variant="outline" class="text-xs font-semibold border-slate-200 text-slate-600 px-3 py-1 rounded-full">
           {{ results.length }} Peserta Selesai
         </Badge>
-        <Button variant="outline" size="sm" @click="exportCSV" class="gap-2 text-xs font-bold">
-          <DownloadIcon class="w-3.5 h-3.5" /> Export CSV
-        </Button>
+        <div class="flex gap-2">
+          <Button variant="outline" size="sm" @click="exportCSV" class="gap-2 text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50">
+            <DownloadIcon class="w-3.5 h-3.5" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" @click="exportPDF" class="gap-2 text-xs font-bold border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800">
+            <FileTextIcon class="w-3.5 h-3.5" /> PDF
+          </Button>
+        </div>
       </div>
     </div>
 
@@ -132,7 +137,7 @@
                 <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Peserta</th>
                 <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Email</th>
                 <th class="px-4 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Skor</th>
-                <th class="px-4 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nilai Bar</th>
+                <th class="px-4 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nilai Bar (Max: {{ maxPossibleScore }})</th>
                 <th class="px-4 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
                 <th class="px-4 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pelanggaran</th>
                 <th class="px-4 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Rekomendasi</th>
@@ -314,9 +319,11 @@ import DataTablePagination from '@/components/shared/DataTablePagination.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  ArrowLeftIcon, DownloadIcon, SearchIcon,
+  ArrowLeftIcon, DownloadIcon, SearchIcon, FileTextIcon,
   TrophyIcon, BarChart3Icon, EyeIcon, UsersIcon, ClipboardListIcon
 } from 'lucide-vue-next'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
 
 const router = useRouter()
 const route = useRoute()
@@ -520,12 +527,13 @@ const finalizeScore = async (res: any) => {
 
 const exportCSV = () => {
   const rows = [
-    ['Rank', 'Nama', 'Email', 'Skor', 'Status', 'Pelanggaran', 'Rekomendasi'],
+    ['Rank', 'Nama', 'Email', 'Skor', 'Nilai Maks', 'Status', 'Pelanggaran', 'Rekomendasi'],
     ...filteredResults.value.map((r, i) => [
       i + 1,
       r.user_name || '',
       r.user_email || '',
       (r.total_score || 0).toFixed(1),
+      maxPossibleScore.value,
       r.grading_status,
       violationsByParticipant.value[r.participant_id] || 0,
       getRecommendation(r).replace(/[⭐✅🟡⚠️❌]/g, '').trim(),
@@ -537,5 +545,58 @@ const exportCSV = () => {
   a.href = URL.createObjectURL(blob)
   a.download = `results-analytics-${sessionId.substring(0, 8)}.csv`
   a.click()
+}
+
+const exportPDF = () => {
+  const doc = new jsPDF()
+  
+  // Title
+  doc.setFontSize(18)
+  doc.setFont("helvetica", "bold")
+  doc.text('Laporan Hasil Ujian Kasus & Rekomendasi', 14, 22)
+  
+  // Subtitle / Session Info
+  doc.setFontSize(11)
+  doc.setFont("helvetica", "normal")
+  doc.text(`Sesi: ${sessionName.value}`, 14, 30)
+  doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 36)
+  
+  // Summary Stats
+  doc.setFontSize(12)
+  doc.setFont("helvetica", "bold")
+  doc.text('Ringkasan', 14, 48)
+  
+  doc.setFontSize(10)
+  doc.setFont("helvetica", "normal")
+  const completed = results.value.length
+  doc.text(`Total Peserta Selesai: ${completed}`, 14, 55)
+  doc.text(`Rata-rata Skor: ${avgScore.value.toFixed(1)} dari maksimal ${maxPossibleScore.value}`, 14, 61)
+  doc.text(`Skor Tertinggi: ${maxScore.value.toFixed(1)}`, 14, 67)
+  
+  doc.setFontSize(12)
+  doc.setFont("helvetica", "bold")
+  doc.text('Daftar Kandidat Berdasarkan Rank', 14, 80)
+
+  // Configure table data
+  const tableColumn = ["Rank", "Nama", "Email", "Skor (Max)", "Pelanggaran", "Rekomendasi"]
+  const tableRows = filteredResults.value.map((r, i) => [
+    i + 1,
+    r.user_name || 'Unknown',
+    r.user_email || '-',
+    `${(r.total_score || 0).toFixed(1)} / ${maxPossibleScore.value}`,
+    violationsByParticipant.value[r.participant_id] || 0,
+    getRecommendation(r).replace(/[⭐✅🟡⚠️❌]/g, '').trim()
+  ])
+
+  ;(doc as any).autoTable({
+    startY: 85,
+    head: [tableColumn],
+    body: tableRows,
+    theme: 'grid',
+    headStyles: { fillColor: [30, 64, 175], fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 3 },
+  })
+
+  doc.save(`Laporan-Hasil-${sessionId.substring(0, 8)}.pdf`)
 }
 </script>

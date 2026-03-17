@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"hrd_room/backend/internal/domain"
@@ -199,6 +200,33 @@ func (uc *ExamUseCase) AutoGrade(ctx context.Context, participantID uuid.UUID) (
 	for _, ans := range answers {
 		q, ok := questionMap[ans.QuestionID]
 		if !ok {
+			continue
+		}
+
+		if q.Type == domain.QuestionTypeShortAnswer && len(q.Options) > 0 {
+			correct := false
+			if ans.TextAnswer != nil {
+				ansText := strings.TrimSpace(strings.ToLower(*ans.TextAnswer))
+				for _, opt := range q.Options {
+					if opt.IsCorrect {
+						optText := strings.TrimSpace(strings.ToLower(opt.Content))
+						if ansText == optText {
+							correct = true
+							break
+						}
+					}
+				}
+			}
+
+			score := 0.0
+			if correct {
+				score = q.Weight
+				totalScore += score
+			}
+
+			if err := uc.answerRepo.UpdateGrading(ctx, ans.ID, correct, score); err != nil {
+				return nil, err
+			}
 			continue
 		}
 

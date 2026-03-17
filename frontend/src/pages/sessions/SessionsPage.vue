@@ -105,7 +105,7 @@
               </Badge>
             </TableCell>
             <TableCell class="py-4 px-6 text-right">
-              <div class="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex justify-end gap-1">
                 <Button variant="ghost" size="icon" class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 h-8 w-8 rounded-full" @click="router.push(`/sessions/${s.id}`)">
                   <EyeIcon class="w-4 h-4" />
                 </Button>
