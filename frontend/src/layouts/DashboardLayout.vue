@@ -1,14 +1,14 @@
 <template>
-  <div class="flex h-screen bg-slate-50 font-sans">
+  <div class="flex h-full bg-slate-50 font-sans overflow-hidden">
     <!-- Sidebar -->
-    <aside class="w-64 flex flex-col bg-[#253f86] text-white overflow-hidden shadow-xl z-10">
+    <aside class="w-64 flex flex-col bg-[#253f86] text-white overflow-hidden shadow-xl z-20">
       <!-- Brand / Logo -->
       <div class="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#253f86] font-bold">
             <img :src="viteLogo" alt="Logo" class="w-8 h-8" />
           </div>
-          <span class="font-bold text-lg tracking-wide">HRD Room</span>
+          <span class="font-bold text-md tracking-wide uppercase">Wowin Assesment Center</span>
         </div>
       </div>
 

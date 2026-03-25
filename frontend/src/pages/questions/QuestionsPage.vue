@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 max-w-7xl mx-auto">
+  <div class="space-y-6 w-full max-w-[1200px] mx-auto pb-10">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <h2 class="text-3xl font-bold tracking-tight">Bank Soal</h2>
       <div class="flex flex-wrap items-center gap-2">

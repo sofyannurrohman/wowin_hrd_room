@@ -20,6 +20,7 @@ import (
 	"hrd_room/backend/pkg/email"
 	jwtpkg "hrd_room/backend/pkg/jwt"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -113,8 +114,16 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Static files for uploads
-	r.Static("/uploads", uploadDir)
+	// Gzip compression
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	// Static files for uploads with cache control
+	uploads := r.Group("/uploads")
+	uploads.Use(func(c *gin.Context) {
+		c.Header("Cache-Control", "public, max-age=31536000")
+		c.Next()
+	})
+	uploads.Static("", uploadDir)
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {

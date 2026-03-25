@@ -18,6 +18,7 @@ func NewDashboardRepository(db *pgxpool.Pool) *DashboardRepository {
 type DashboardStats struct {
 	ActiveSessions         int `json:"active_sessions"`
 	TotalParticipantsToday int `json:"total_participants_today"`
+	TotalParticipants      int `json:"total_participants"`
 	RecentViolations       int `json:"recent_violations"`
 }
 
@@ -38,6 +39,11 @@ func (r *DashboardRepository) GetStats(ctx context.Context) (*DashboardStats, er
 	}
 
 	err = r.db.QueryRow(ctx, `SELECT count(*) FROM violations WHERE detected_at >= $1`, todayStart).Scan(&stats.RecentViolations)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.db.QueryRow(ctx, `SELECT count(*) FROM users WHERE role_id = 3`).Scan(&stats.TotalParticipants)
 	if err != nil {
 		return nil, err
 	}

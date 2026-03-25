@@ -3,7 +3,7 @@
     <Card class="w-full max-w-md">
       <CardHeader class="space-y-1 text-center">
         <img :src="viteLogo" alt="Logo" class="mx-auto w-32 h-32" />
-        <CardTitle class="text-2xl">Wowin HRD Room</CardTitle>
+        <CardTitle class="text-2xl">Wowin Assesment Center</CardTitle>
         <CardDescription>Gunakan Akun HR untuk login ke sistem</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">

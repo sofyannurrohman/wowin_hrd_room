@@ -1,201 +1,171 @@
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 py-8 md:py-12 font-sans overflow-y-auto">
-    <!-- Header Logo -->
-    <div class="w-full max-w-5xl mb-6 flex items-center gap-2">
-      <div class="text-primary font-bold text-xl flex items-center gap-2">
-        <div class="w-36 h-36 rounded-full flex items-center justify-center">
-          <img :src="viteLogo" alt="Logo" class="w-16 h-16" />
+  <div class="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-6 font-sans">
+    <div class="w-full max-w-5xl flex flex-col gap-6">
+      <!-- Top header (Smaller) -->
+      <div class="flex items-center justify-between px-2">
+        <div class="flex items-center gap-2">
+          <img :src="viteLogo" alt="Logo" class="w-10 h-10" />
+          <span class="font-black text-xl text-slate-800 tracking-tight">Assesment Center</span>
         </div>
-        <span class="text-slate-800">Wowin Assesment Center</span>
+        <div class="hidden md:flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+          <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          System Live
+        </div>
       </div>
-    </div>
 
-    <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- Main Registration Form -->
-      <Card class="col-span-1 md:col-span-2 shadow-sm border-0 rounded-2xl bg-white p-2">
-        <CardHeader class="space-y-2 pb-6">
-          <CardTitle class="text-3xl font-extrabold tracking-tight text-slate-900">Laman Ujian</CardTitle>
-          <CardDescription class="text-base text-slate-500">
-            Silakan masukkan token ujian Anda untuk memulai Test.
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent class="space-y-8">
-          <!-- Activation Code Box -->
-          <div class="bg-blue-50/50 rounded-xl p-5 border border-blue-100">
-            <Label for="token" class="text-xs font-bold text-slate-700 tracking-wider mb-2 block uppercase">
-              Token Ujian <span class="text-red-500">*</span>
-            </Label>
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        <!-- Main Form (Left) -->
+        <Card class="md:col-span-7 shadow-xl border-0 rounded-3xl bg-white overflow-hidden">
+          <div class="bg-blue-600 h-2 w-full"></div>
+          <CardHeader class="pb-4">
+            <CardTitle class="text-2xl font-black text-slate-900">Laman Ujian</CardTitle>
+            <CardDescription class="text-sm">
+              Silakan masukkan token ujian Anda untuk memulai Test.
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent class="space-y-6">
+            <div class="p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+              <Label for="token" class="text-[10px] font-black text-blue-700 tracking-widest mb-2 block uppercase">
+                Token Ujian <span class="text-red-500">*</span>
+              </Label>
+              <div class="relative">
+                <Input 
+                  id="token" 
+                  v-model="form.token" 
+                  placeholder="Contoh: HPV6cfzDQUe..." 
+                  class="h-12 border-blue-200 focus-visible:ring-blue-500 bg-white rounded-xl"
+                  autocomplete="off"
+                />
               </div>
-              <Input 
-                id="token" 
-                v-model="form.token" 
-                placeholder="Masukkan kode (contoh. HPV6cfzDQUe...)" 
-                class="pl-10 h-12 border-blue-200 focus-visible:ring-blue-500 bg-white"
-                autocomplete="off"
-              />
+              <p class="text-[10px] text-slate-400 mt-2 italic font-medium">Token dapat dilihat pada email undangan.</p>
             </div>
-            <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-              Disediakan oleh rekruter HR Anda dalam email undangan.
-            </p>
-          </div>
 
+            <Alert v-if="errorMsg" variant="destructive" class="bg-red-50 border-red-100 text-red-700 rounded-xl py-3 px-4">
+              <AlertDescription class="text-xs font-semibold">{{ errorMsg }}</AlertDescription>
+            </Alert>
 
-
-          <Alert v-if="errorMsg" variant="destructive" class="bg-red-50 border-red-200">
-            <AlertTitle>Gagal</AlertTitle>
-            <AlertDescription>{{ errorMsg }}</AlertDescription>
-          </Alert>
-
-          <Button 
-            class="w-full h-14 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2" 
-            @click="handleJoin" 
-            :disabled="loading || !isFormValid"
-          >
-            {{ loading ? 'Memverifikasi...' : 'Mulai Test Sekarang' }}
-            <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </Button>
-
-          <div class="pt-6 mt-2 border-t border-slate-100">
-            <p class="text-sm text-center text-slate-500 mb-4 font-medium">Belum memiliki token atau ingin melihat lowongan?</p>
             <Button 
-              variant="outline"
-              class="w-full h-12 text-sm border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 rounded-xl transition-all flex items-center justify-center gap-2 font-semibold" 
-              @click="router.push('/career')" 
+              class="w-full h-14 text-lg font-black bg-blue-600 hover:bg-blue-700 text-white rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2" 
+              @click="handleJoin" 
+              :disabled="loading || !isFormValid"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              Lihat Peluang Karir
+              {{ loading ? 'Memverifikasi...' : 'Mulai Sekarang' }}
+              <ArrowRightIcon v-if="!loading" class="w-5 h-5" />
             </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      <!-- Sidebar -->
-      <div class="col-span-1 space-y-6">
-        <Card class="shadow-sm border-0 rounded-2xl bg-white p-2">
-          <CardContent class="p-4 md:p-6 space-y-6">
-            <div class="space-y-5">
-              <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-2">
-                <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                </div>
-                Aturan Test
-              </h3>
-              
-              <div class="flex gap-3 items-start">
-                <div class="mt-0.5 rounded-full bg-green-100 p-0.5 text-green-600 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div>
-                  <p class="font-semibold text-sm text-slate-800 text-left">Internet Stabil</p>
-                  <p class="text-xs text-slate-500 text-left">Pastikan Internet Anda Stabil</p>
-                </div>
-              </div>
-
-              <div class="flex gap-3 items-start">
-                <div class="mt-0.5 rounded-full bg-green-100 p-0.5 text-green-600 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div>
-                  <p class="font-semibold text-sm text-slate-800 text-left">Aktifkan Webcam</p>
-                  <p class="text-xs text-slate-500 text-left">Kamera Anda harus tetap menyala untuk tujuan pengawasan.</p>
-                </div>
-              </div>
-
-              <div class="flex gap-3 items-start">
-                <div class="mt-0.5 rounded-full bg-green-100 p-0.5 text-green-600 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div>
-                  <p class="font-semibold text-sm text-slate-800 text-left">Dilarang Browsing Jawaban</p>
-                  <p class="text-xs text-slate-500 text-left">Keluar dari tab penilaian dapat mengakibatkan diskualifikasi.</p>
-                </div>
-              </div>
-
-              <div class="flex gap-3 items-start">
-                <div class="mt-0.5 rounded-full bg-green-100 p-0.5 text-green-600 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div>
-                  <p class="font-semibold text-sm text-slate-800 text-left">Pilih Tempat yang Tenang</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="pt-6 mt-6 border-t border-slate-100 flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0 overflow-hidden">
-                <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Support" alt="Support" class="w-full h-full object-cover" />
-              </div>
-              <div class="text-left">
-                <p class="text-xs text-slate-500">Butuh bantuan?</p>
-                <RouterLink to="/contact-support" class="text-sm font-semibold text-blue-600 hover:underline">Contact Support</RouterLink>
-              </div>
+            <div class="pt-4 border-t border-slate-50">
+              <button 
+                @click="router.push('/career')" 
+                class="w-full py-3 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <BriefcaseIcon class="w-4 h-4" />
+                Lihat Peluang Karir & Lowongan
+              </button>
             </div>
           </CardContent>
         </Card>
 
-        <!-- Informational Section -->
-        <Card class="shadow-sm border-0 rounded-2xl bg-white p-2">
-          <CardContent class="p-4 md:p-6 space-y-6">
-            <div class="space-y-4">
-              <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-4">
-                <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                </div>
-                Informasi Test
-              </h3>
-
-              <!-- IST Test -->
-              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-white transition-all duration-300">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                  <p class="font-bold text-sm text-blue-700">IST Test</p>
-                </div>
-                <p class="text-[11px] text-slate-500 leading-relaxed ml-4">
-                  Intelligence Structure Test mengukur struktur intelegensi dan potensi akademik Anda dalam berbagai aspek kognitif.
-                </p>
+        <!-- Side Content (Right) -->
+        <div class="md:col-span-5 space-y-6">
+          <!-- Compact Info Card -->
+          <Card class="shadow-sm border-0 rounded-3xl bg-white p-1">
+            <CardContent class="p-5 space-y-5">
+              <div class="flex items-center gap-3 border-b border-slate-50 pb-3">
+                 <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                    <ShieldCheckIcon class="w-5 h-5" />
+                 </div>
+                 <h3 class="font-black text-slate-800 text-sm italic tracking-tight">Aturan & Informasi</h3>
               </div>
 
-              <!-- DISC Test -->
-              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-purple-200 hover:bg-white transition-all duration-300">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-                  <p class="font-bold text-sm text-purple-700">DISC Test</p>
+              <!-- Compact Rules -->
+              <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                   <div class="text-green-600 mb-1"><WifiIcon class="w-4 h-4" /></div>
+                   <p class="font-bold text-[10px] text-slate-700">Internet Stabil</p>
                 </div>
-                <p class="text-[11px] text-slate-500 leading-relaxed ml-4">
-                  Asesmen kepribadian untuk memahami gaya perilaku dan kecenderungan interaksi Anda di lingkungan kerja.
-                </p>
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                   <div class="text-blue-600 mb-1"><VideoIcon class="w-4 h-4" /></div>
+                   <p class="font-bold text-[10px] text-slate-700">Webcam Aktif</p>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                   <div class="text-orange-600 mb-1"><AlertCircleIcon class="w-4 h-4" /></div>
+                   <p class="font-bold text-[10px] text-slate-700">Dilarang Browsing</p>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                   <div class="text-purple-600 mb-1"><MoonIcon class="w-4 h-4" /></div>
+                   <p class="font-bold text-[10px] text-slate-700">Tempat Tenang</p>
+                </div>
               </div>
 
-              <!-- Skill Based Hiring -->
-              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-white transition-all duration-300">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <p class="font-bold text-sm text-emerald-700">Skill Based Hiring</p>
+              <div class="space-y-3 pt-2">
+                <!-- IST -->
+                <div class="p-3 rounded-2xl border border-blue-50 bg-blue-50/20 group hover:bg-blue-50 transition-colors">
+                   <div class="flex items-center gap-2 mb-1.5">
+                      <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                      <span class="text-[11px] font-black text-blue-700 uppercase tracking-tight">IST Assessment</span>
+                   </div>
+                   <p class="text-[10px] text-slate-500 leading-relaxed px-1">
+                     Intelligence Structure Test mengukur struktur intelegensi dan potensi akademik dalam berbagai aspek kognitif.
+                   </p>
                 </div>
-                <p class="text-[11px] text-slate-500 leading-relaxed ml-4">
-                  Evaluasi kemampuan teknis dan keterampilan spesifik yang relevan dengan posisi pekerjaan yang dilamar.
-                </p>
+
+                <!-- DISC -->
+                <div class="p-3 rounded-2xl border border-purple-50 bg-purple-50/10 group hover:bg-purple-50 transition-colors">
+                   <div class="flex items-center gap-2 mb-1.5">
+                      <div class="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                      <span class="text-[11px] font-black text-purple-700 uppercase tracking-tight">DISC Assessment</span>
+                   </div>
+                   <p class="text-[10px] text-slate-500 leading-relaxed px-1">
+                     Memahami gaya perilaku dan kecenderungan interaksi Anda di lingkungan kerja profesional.
+                   </p>
+                </div>
+
+                <!-- Skill -->
+                <div class="p-3 rounded-2xl border border-emerald-50 bg-emerald-50/10 group hover:bg-emerald-50 transition-colors">
+                   <div class="flex items-center gap-2 mb-1.5">
+                      <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                      <span class="text-[11px] font-black text-emerald-700 uppercase tracking-tight">Skill Based Hiring</span>
+                   </div>
+                   <p class="text-[10px] text-slate-500 leading-relaxed px-1">
+                     Evaluasi kemampuan teknis dan keterampilan spesifik yang relevan dengan posisi yang dilamar.
+                   </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div class="p-3 bg-amber-50/50 rounded-2xl border border-amber-100 flex gap-2 items-start mt-2">
+                 <AlertCircleIcon class="w-4 h-4 text-amber-600 shrink-0" />
+                 <p class="text-[10px] text-amber-800 leading-relaxed font-medium">
+                   Pastikan Anda memiliki waktu luang minimal 60-120 menit untuk menyelesaikan seluruh rangkaian tes.
+                 </p>
+              </div>
+
+              <div class="pt-4 mt-2 border-t border-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                   <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Support" alt="Support" class="w-8 h-8 rounded-full bg-orange-50" />
+                   <div class="text-left">
+                     <p class="text-[10px] text-slate-400 font-medium">Bantuan?</p>
+                     <RouterLink to="/contact-support" class="text-[11px] font-bold text-blue-600">Hubungi Kami</RouterLink>
+                   </div>
+                </div>
+                <div class="text-[10px] text-slate-300 font-mono">v2.4.0</div>
+              </div>
+            </CardContent>
+          </Card>
+
       </div>
     </div>
-    
-    <!-- Footer layout -->
-    <div class="w-full max-w-5xl mt-12 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 pb-2">
-      <div class="mb-4 md:mb-0 text-center md:text-left">
-        <p>© 2026 PT Wowin Purnomo Putera.</p>
-        <p>All rights reserved.</p>
-      </div>
-      <div class="flex justify-center md:justify-end gap-6 font-medium">
-        <RouterLink to="/privacy-policy" class="hover:text-slate-800">Privacy Policy</RouterLink>
-        <RouterLink to="/terms-of-service" class="hover:text-slate-800">Terms of Service</RouterLink>
+
+    <!-- Default Footer -->
+      <div class="w-full mt-12 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 pb-10 border-t border-slate-100 pt-8 px-2">
+        <div class="mb-4 md:mb-0 text-center md:text-left">
+          <p>© 2026 PT Wowin Purnomo Putera.</p>
+          <p>All rights reserved.</p>
+        </div>
+        <div class="flex justify-center md:justify-end gap-6 font-medium">
+          <RouterLink to="/privacy-policy" class="hover:text-slate-800">Privacy Policy</RouterLink>
+          <RouterLink to="/terms-of-service" class="hover:text-slate-800">Terms of Service</RouterLink>
+        </div>
       </div>
     </div>
   </div>
@@ -209,8 +179,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import viteLogo from '@/assets/vite.svg'
+import { 
+  ArrowRightIcon, 
+  BriefcaseIcon, 
+  ShieldCheckIcon, 
+  WifiIcon, 
+  VideoIcon, 
+  AlertCircleIcon, 
+  MoonIcon 
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()

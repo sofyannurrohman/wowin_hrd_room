@@ -1,11 +1,11 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex items-center justify-between">
+  <div class="space-y-6 w-full max-w-[1200px] mx-auto pb-10">
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-slate-900">Module Soal</h1>
         <p class="text-sm text-slate-500 mt-1">Manage question banks and modules</p>
       </div>
-      <div class="flex items-center gap-3 w-full md:w-auto">
+      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
         <div class="relative w-64">
            <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
            <input

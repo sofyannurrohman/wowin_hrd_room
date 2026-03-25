@@ -3,7 +3,7 @@
     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <div>
         <h2 class="text-3xl font-extrabold tracking-tight text-slate-800">Dashboard Overview</h2>
-        <p class="text-slate-500 mt-1">Welcome back! mari kita lihat apa yang terjadi di HRD Room hari ini.</p>
+        <p class="text-slate-500 mt-1">Welcome back! mari kita lihat apa yang terjadi di Wowin Assesment Center hari ini.</p>
       </div>
       <div class="flex items-center gap-3 relative">
         <div class="relative">

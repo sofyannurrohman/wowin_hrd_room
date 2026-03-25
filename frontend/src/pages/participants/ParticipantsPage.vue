@@ -1,7 +1,5 @@
 <template>
-  <div class="space-y-6 max-w-[1200px] mx-auto pb-10">
-
-
+  <div class="space-y-6 w-full max-w-[1200px] mx-auto pb-10">
 
     <!-- Header -->
     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

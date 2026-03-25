@@ -7,7 +7,7 @@
       </div>
 
       <div class="prose prose-slate max-w-none">
-        <p>At HRD Room, accessible from our application, one of our main priorities is the privacy of our visitors and users. This Privacy Policy document contains types of information that is collected and recorded by HRD Room and how we use it.</p>
+        <p>At Wowin Assesment Center, accessible from our application, one of our main priorities is the privacy of our visitors and users. This Privacy Policy document contains types of information that is collected and recorded by Wowin Assesment Center and how we use it.</p>
         
         <p>If you have additional questions or require more information about our Privacy Policy, do not hesitate to contact us.</p>
         
@@ -29,10 +29,10 @@
         </ul>
 
         <h2 class="text-xl font-bold mt-8 mb-4">Log Files</h2>
-        <p>HRD Room follows a standard procedure of using log files. These files log visitors when they visit the application. All hosting companies do this and a part of hosting services' analytics. The information collected by log files include internet protocol (IP) addresses, browser type, Internet Service Provider (ISP), date and time stamp, referring/exit pages, and possibly the number of clicks. These are not linked to any information that is personally identifiable. The purpose of the information is for analyzing trends, administering the site, tracking users' movement on the application, and gathering demographic information.</p>
+        <p>Wowin Assesment Center follows a standard procedure of using log files. These files log visitors when they visit the application. All hosting companies do this and a part of hosting services' analytics. The information collected by log files include internet protocol (IP) addresses, browser type, Internet Service Provider (ISP), date and time stamp, referring/exit pages, and possibly the number of clicks. These are not linked to any information that is personally identifiable. The purpose of the information is for analyzing trends, administering the site, tracking users' movement on the application, and gathering demographic information.</p>
 
         <h2 class="text-xl font-bold mt-8 mb-4">Data Security during Exams</h2>
-        <p>For participants taking exams via HRD Room, we employ additional security measures such as webcam monitoring and browser focus tracking to ensure exam integrity. This data is reviewed solely for the purpose of validating the exam attempt and is accessible only to authorized HR personnel reviewing your application.</p>
+        <p>For participants taking exams via Wowin Assesment Center, we employ additional security measures such as webcam monitoring and browser focus tracking to ensure exam integrity. This data is reviewed solely for the purpose of validating the exam attempt and is accessible only to authorized HR personnel reviewing your application.</p>
       </div>
 
       <div class="mt-12 pt-8 border-t border-slate-100">

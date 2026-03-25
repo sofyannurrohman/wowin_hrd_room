@@ -7,25 +7,25 @@
       </div>
 
       <div class="prose prose-slate max-w-none">
-        <p>Welcome to HRD Room!</p>
+        <p>Welcome to Wowin Assesment Center!</p>
 
         <p>These terms and conditions outline the rules and regulations for the use of PT Wowin Purnomo Putera's Website and Application, located at our platform.</p>
 
-        <p>By accessing this website we assume you accept these terms and conditions. Do not continue to use HRD Room if you do not agree to take all of the terms and conditions stated on this page.</p>
+        <p>By accessing this website we assume you accept these terms and conditions. Do not continue to use Wowin Assesment Center if you do not agree to take all of the terms and conditions stated on this page.</p>
 
         <h2 class="text-xl font-bold mt-8 mb-4">License</h2>
-        <p>Unless otherwise stated, PT Wowin Purnomo Putera and/or its licensors own the intellectual property rights for all material on HRD Room. All intellectual property rights are reserved. You may access this from HRD Room for your own personal use subjected to restrictions set in these terms and conditions.</p>
+        <p>Unless otherwise stated, PT Wowin Purnomo Putera and/or its licensors own the intellectual property rights for all material on Wowin Assesment Center. All intellectual property rights are reserved. You may access this from Wowin Assesment Center for your own personal use subjected to restrictions set in these terms and conditions.</p>
 
         <p>You must not:</p>
         <ul class="list-disc pl-5 mb-4 space-y-1 text-slate-700">
-          <li>Republish material from HRD Room</li>
-          <li>Sell, rent or sub-license material from HRD Room</li>
-          <li>Reproduce, duplicate or copy material from HRD Room</li>
-          <li>Redistribute content from HRD Room</li>
+          <li>Republish material from Wowin Assesment Center</li>
+          <li>Sell, rent or sub-license material from Wowin Assesment Center</li>
+          <li>Reproduce, duplicate or copy material from Wowin Assesment Center</li>
+          <li>Redistribute content from Wowin Assesment Center</li>
         </ul>
 
         <h2 class="text-xl font-bold mt-8 mb-4">Exam Integrity and Conduct</h2>
-        <p>As a candidate taking an exam through the HRD Room platform, you agree to the following code of conduct:</p>
+        <p>As a candidate taking an exam through the Wowin Assesment Center platform, you agree to the following code of conduct:</p>
           <ul class="list-disc pl-5 mb-4 space-y-1 text-slate-700">
           <li>You will not use external assistance, including but not limited to search engines, other applications, or other individuals during the exam unless explicitly permitted.</li>
           <li>You consent to the monitoring of your exam session via webcam and browser activity tracking to ensure fairness and prevent cheating.</li>
