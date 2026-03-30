@@ -59,9 +59,15 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 }
 
 type UpdateUserRequest struct {
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	RoleID int    `json:"role_id"`
+	Name            string  `json:"name"`
+	Email           string  `json:"email"`
+	RoleID          int     `json:"role_id"`
+	Age             *int    `json:"age"`
+	AppliedPosition *string `json:"applied_position"`
+	Address         *string `json:"address"`
+	LastEducation   *string `json:"last_education"`
+	WhatsappNumber  *string `json:"whatsapp_number"`
+	ExpectedSalary  *string `json:"expected_salary"`
 }
 
 func (h *AdminHandler) UpdateUser(c *gin.Context) {
@@ -91,6 +97,24 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	}
 	if req.RoleID != 0 {
 		user.RoleID = req.RoleID
+	}
+	if req.Age != nil {
+		user.Age = req.Age
+	}
+	if req.AppliedPosition != nil {
+		user.AppliedPosition = req.AppliedPosition
+	}
+	if req.Address != nil {
+		user.Address = req.Address
+	}
+	if req.LastEducation != nil {
+		user.LastEducation = req.LastEducation
+	}
+	if req.WhatsappNumber != nil {
+		user.WhatsappNumber = req.WhatsappNumber
+	}
+	if req.ExpectedSalary != nil {
+		user.ExpectedSalary = req.ExpectedSalary
 	}
 
 	if err := h.userRepo.Update(c.Request.Context(), user); err != nil {

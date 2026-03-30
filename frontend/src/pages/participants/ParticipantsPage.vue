@@ -233,7 +233,7 @@
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showModal = false">
         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 z-10">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6 space-y-5 z-10">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-extrabold text-slate-800">{{ editingId ? 'Edit Peserta' : 'Tambah Peserta Baru' }}</h3>
             <button @click="showModal = false" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400">✕</button>
@@ -241,8 +241,8 @@
 
           <!-- errors are now shown as toast notifications -->
 
-          <div class="space-y-4">
-            <div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="col-span-1 md:col-span-2">
               <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Nama Lengkap *</label>
               <input v-model="form.name" type="text" placeholder="Nama peserta" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
@@ -250,7 +250,31 @@
               <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Email *</label>
               <input v-model="form.email" type="email" placeholder="email@perusahaan.com" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-            <div v-if="!editingId">
+            <div>
+              <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">WhatsApp *</label>
+              <input v-model="form.whatsapp_number" type="text" placeholder="0812..." class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Posisi Dilamar</label>
+              <input v-model="form.applied_position" type="text" placeholder="e.g. Sales" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Umur</label>
+              <input v-model.number="form.age" type="number" placeholder="Thn" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Pendidikan Terakhir</label>
+              <input v-model="form.last_education" type="text" placeholder="e.g. S1" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Ekspektasi Gaji</label>
+              <input v-model="form.expected_salary" type="text" placeholder="e.g. 5.000.000" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div class="col-span-1 md:col-span-2">
+              <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Alamat</label>
+              <textarea v-model="form.address" rows="2" placeholder="Alamat lengkap" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            </div>
+            <div v-if="!editingId" class="col-span-1 md:col-span-2">
               <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Password *</label>
               <input v-model="form.password" type="password" placeholder="Minimal 8 karakter" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
@@ -422,7 +446,17 @@ const {
 // ─── CRUD ─────────────────────────────────────────────────────────
 const showModal = ref(false)
 const editingId = ref<string | null>(null)
-const form = ref({ name: '', email: '', password: '' })
+const form = ref({
+  name: '',
+  email: '',
+  password: '',
+  age: null as number | null,
+  applied_position: '',
+  whatsapp_number: '',
+  last_education: '',
+  expected_salary: '',
+  address: ''
+})
 const saving = ref(false)
 
 const openDetail = (p: any) => {
@@ -431,13 +465,33 @@ const openDetail = (p: any) => {
 
 const openAdd = () => {
   editingId.value = null
-  form.value = { name: '', email: '', password: '' }
+  form.value = {
+    name: '',
+    email: '',
+    password: '',
+    age: null,
+    applied_position: '',
+    whatsapp_number: '',
+    last_education: '',
+    expected_salary: '',
+    address: ''
+  }
   showModal.value = true
 }
 
 const openEdit = (p: any) => {
   editingId.value = p.id
-  form.value = { name: p.name || '', email: p.email || '', password: '' }
+  form.value = {
+    name: p.name || '',
+    email: p.email || '',
+    password: '',
+    age: p.age || null,
+    applied_position: p.applied_position || '',
+    whatsapp_number: p.whatsapp_number || '',
+    last_education: p.last_education || '',
+    expected_salary: p.expected_salary || '',
+    address: p.address || ''
+  }
   showModal.value = true
 }
 
@@ -452,6 +506,12 @@ const saveParticipant = async () => {
       await client.put(`/participants/${editingId.value}`, {
         name: form.value.name,
         email: form.value.email,
+        age: form.value.age,
+        applied_position: form.value.applied_position,
+        whatsapp_number: form.value.whatsapp_number,
+        last_education: form.value.last_education,
+        expected_salary: form.value.expected_salary,
+        address: form.value.address
       })
       showToast('success', `Data peserta ${form.value.name} berhasil diperbarui.`)
     } else {
@@ -460,6 +520,12 @@ const saveParticipant = async () => {
         email: form.value.email,
         password: form.value.password,
         role: 'participant',
+        age: form.value.age,
+        applied_position: form.value.applied_position,
+        whatsapp_number: form.value.whatsapp_number,
+        last_education: form.value.last_education,
+        expected_salary: form.value.expected_salary,
+        address: form.value.address
       })
       showToast('success', `Peserta ${form.value.name} berhasil ditambahkan.`)
     }

@@ -3,10 +3,11 @@ package email
 import (
 	"fmt"
 	"net/smtp"
+	"time"
 )
 
 type Sender interface {
-	SendInvite(toEmail, participantName, token, sessionName, loginURL string) error
+	SendInvite(toEmail, participantName, token, sessionName, loginURL string, startTime time.Time) error
 }
 
 type SMTPSender struct {
@@ -30,7 +31,7 @@ func NewSMTPSender(host, port, user, password, from string) *SMTPSender {
 // Ensure SMTPSender implements Sender
 var _ Sender = (*SMTPSender)(nil)
 
-func (s *SMTPSender) SendInvite(toEmail, participantName, token, sessionName, loginURL string) error {
+func (s *SMTPSender) SendInvite(toEmail, participantName, token, sessionName, loginURL string, startTime time.Time) error {
 	if s.host == "" {
 		// Log or return error if SMTP is not configured
 		fmt.Printf("Warning: SMTP host is not configured. Email to %s was not sent.\n", toEmail)
@@ -44,14 +45,20 @@ func (s *SMTPSender) SendInvite(toEmail, participantName, token, sessionName, lo
 
 	subject := fmt.Sprintf("Undangan Ujian: %s", sessionName)
 
+	// Format time in Indonesian style if possible, or standard readable format
+	// Layout: Monday, 02 Jan 2006 15:04 WIB
+	formattedTime := startTime.Format("02 Jan 2006 15:04")
+
 	body := fmt.Sprintf(`Halo %s,
 
 Anda telah diundang untuk mengikuti ujian: %s.
 
+Waktu Pelaksanaan: %s
+
 Silakan klik tautan di bawah ini untuk masuk ke halaman persiapan ujian Anda:
 %s
 
-Pada halaman tersebut, lengkapi formulir data diri (jika belum), lalu masukkan Token Akses berikut ke dalam kolom "Token Ujian Khusus":
+Pada halaman tersebut masukkan Token Akses berikut ke dalam kolom "Token Ujian Khusus":
 %s
 
 (Pastikan untuk menggunakan alamat Email yang sama dengan email ini: %s)
@@ -61,7 +68,7 @@ Semoga berhasil!
 
 Salam,
 Tim HRD
-`, participantName, sessionName, loginURL, token, toEmail)
+`, participantName, sessionName, formattedTime, loginURL, token, toEmail)
 
 	msg := []byte(fmt.Sprintf("To: %s\r\n"+
 		"Subject: %s\r\n"+
@@ -79,7 +86,7 @@ func NewMockSender() *MockSender {
 	return &MockSender{}
 }
 
-func (m *MockSender) SendInvite(toEmail, participantName, token, sessionName, loginURL string) error {
-	fmt.Printf("[MOCK EMAIL] Invitation sent to %s with token %s for session %s\n", toEmail, token, sessionName)
+func (m *MockSender) SendInvite(toEmail, participantName, token, sessionName, loginURL string, startTime time.Time) error {
+	fmt.Printf("[MOCK EMAIL] Invitation sent to %s with token %s for session %s (scheduled at: %s)\n", toEmail, token, sessionName, startTime.Format(time.RFC3339))
 	return nil
 }

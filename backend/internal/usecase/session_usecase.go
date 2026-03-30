@@ -192,8 +192,10 @@ func (uc *SessionUseCase) GenerateTokens(ctx context.Context, sessionID uuid.UUI
 		if t.BoundEmail != nil && *t.BoundEmail != "" {
 			session, _ := uc.sessionRepo.FindByID(ctx, sessionID) // We can err check silently
 			sessionName := "Ujian HRD"
+			startTime := time.Now()
 			if session != nil {
 				sessionName = session.Name
+				startTime = session.Schedule
 			}
 
 			// Try to find the participant name. In our context this isn't strictly necessary for bare functionality,
@@ -202,7 +204,7 @@ func (uc *SessionUseCase) GenerateTokens(ctx context.Context, sessionID uuid.UUI
 			// Build magic login link — reads APP_BASE_URL env var (defaults to production domain)
 			loginURL := uc.baseURL + "/join"
 
-			go uc.emailSender.SendInvite(*t.BoundEmail, "Peserta", plain, sessionName, loginURL)
+			go uc.emailSender.SendInvite(*t.BoundEmail, "Peserta", plain, sessionName, loginURL, startTime)
 		}
 
 		results = append(results, GeneratedToken{
