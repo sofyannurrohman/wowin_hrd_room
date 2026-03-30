@@ -274,10 +274,6 @@
               <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Alamat</label>
               <textarea v-model="form.address" rows="2" placeholder="Alamat lengkap" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
             </div>
-            <div v-if="!editingId" class="col-span-1 md:col-span-2">
-              <label class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 block">Password *</label>
-              <input v-model="form.password" type="password" placeholder="Minimal 8 karakter" class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
           </div>
 
           <div class="flex gap-3 pt-2">
@@ -449,7 +445,6 @@ const editingId = ref<string | null>(null)
 const form = ref({
   name: '',
   email: '',
-  password: '',
   age: null as number | null,
   applied_position: '',
   whatsapp_number: '',
@@ -468,7 +463,6 @@ const openAdd = () => {
   form.value = {
     name: '',
     email: '',
-    password: '',
     age: null,
     applied_position: '',
     whatsapp_number: '',
@@ -484,7 +478,6 @@ const openEdit = (p: any) => {
   form.value = {
     name: p.name || '',
     email: p.email || '',
-    password: '',
     age: p.age || null,
     applied_position: p.applied_position || '',
     whatsapp_number: p.whatsapp_number || '',
@@ -498,7 +491,6 @@ const openEdit = (p: any) => {
 const saveParticipant = async () => {
   if (!form.value.name.trim()) { showToast('error', 'Nama tidak boleh kosong.'); return }
   if (!form.value.email.trim()) { showToast('error', 'Email tidak boleh kosong.'); return }
-  if (!editingId.value && !form.value.password.trim()) { showToast('error', 'Password tidak boleh kosong.'); return }
 
   saving.value = true
   try {
@@ -515,10 +507,13 @@ const saveParticipant = async () => {
       })
       showToast('success', `Data peserta ${form.value.name} berhasil diperbarui.`)
     } else {
+      // Generate a random internal password as users login via magic links/tokens
+      const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10)
+      
       await client.post('/auth/register', {
         name: form.value.name,
         email: form.value.email,
-        password: form.value.password,
+        password: randomPassword,
         role: 'participant',
         age: form.value.age,
         applied_position: form.value.applied_position,

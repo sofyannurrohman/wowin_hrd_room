@@ -45,9 +45,10 @@ func (s *SMTPSender) SendInvite(toEmail, participantName, token, sessionName, lo
 
 	subject := fmt.Sprintf("Undangan Ujian: %s", sessionName)
 
-	// Format time in Indonesian style if possible, or standard readable format
-	// Layout: Monday, 02 Jan 2006 15:04 WIB
-	formattedTime := startTime.Format("02 Jan 2006 15:04")
+	// Convert to Asian/Jakarta (WIB) for consistency
+	jakartaLoc := time.FixedZone("WIB", 7*3600)
+	localTime := startTime.In(jakartaLoc)
+	formattedTime := localTime.Format("02 Jan 2006 15:04") + " WIB"
 
 	body := fmt.Sprintf(`Halo %s,
 
