@@ -42,8 +42,8 @@ import viteLogo from '@/assets/vite.svg'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const email = ref('admin@hrdroom.com')
-const password = ref('admin123')
+const email = ref('')
+const password = ref('')
 const errorMsg = ref('')
 const loading = ref(false)
 
