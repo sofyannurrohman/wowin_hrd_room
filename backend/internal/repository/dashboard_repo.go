@@ -125,7 +125,8 @@ func (r *DashboardRepository) GetParticipantDetail(ctx context.Context, userID s
 			r.total_score,
 			CAST(r.id AS TEXT) as result_id,
             CAST(s.id AS TEXT) as session_id,
-			CAST(sp.id AS TEXT) as participant_id
+			CAST(sp.id AS TEXT) as participant_id,
+			sp.ktp_selfie_url
 		FROM session_participants sp
 		JOIN sessions s ON sp.session_id = s.id
 		LEFT JOIN results r ON sp.id = r.participant_id
@@ -147,8 +148,9 @@ func (r *DashboardRepository) GetParticipantDetail(ctx context.Context, userID s
 		var resultID *string
 		var sessionID string
 		var participantID string
+		var ktpSelfieURL *string
 
-		if err := rows.Scan(&sessionName, &schedule, &status, &score, &resultID, &sessionID, &participantID); err != nil {
+		if err := rows.Scan(&sessionName, &schedule, &status, &score, &resultID, &sessionID, &participantID, &ktpSelfieURL); err != nil {
 			return nil, err
 		}
 
@@ -160,6 +162,7 @@ func (r *DashboardRepository) GetParticipantDetail(ctx context.Context, userID s
 			"result_id":      resultID,
 			"session_id":     sessionID,
 			"participant_id": participantID,
+			"ktp_selfie_url": ktpSelfieURL,
 		})
 	}
 	if history == nil {

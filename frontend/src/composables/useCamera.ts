@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 export function useCamera() {
   const stream = ref<MediaStream | null>(null)
@@ -40,6 +40,17 @@ export function useCamera() {
     }
   }
 
+  const takeSnapshot = (videoElement: HTMLVideoElement): string | null => {
+    if (!videoElement || !stream.value) return null
+    const canvas = document.createElement('canvas')
+    canvas.width = videoElement.videoWidth || 640
+    canvas.height = videoElement.videoHeight || 480
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.8)
+  }
+
   onUnmounted(() => {
     stopCamera()
   })
@@ -49,6 +60,7 @@ export function useCamera() {
     error,
     isVideoLoading,
     startCamera,
-    stopCamera
+    stopCamera,
+    takeSnapshot
   }
 }

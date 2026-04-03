@@ -29,6 +29,20 @@
             </p>
             <Button variant="secondary" class="mt-4" @click="initCam">Coba Lagi</Button>
           </div>
+          
+          <div v-if="photoPreview" class="absolute inset-0 z-10 bg-black">
+            <img :src="photoPreview" class="w-full h-full object-contain" alt="KTP Selfie Preview" />
+            <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+              <Button variant="destructive" @click="retakePhoto">Foto Ulang</Button>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 bg-muted text-center border-t border-border flex justify-between items-center px-6">
+           <span class="text-sm font-medium text-muted-foreground w-full block" v-if="!photoPreview">Posisikan wajah dan KTP Anda menghadap kamera dengan jelas (Apabila tidak ada kesesuaian data pada proses validasi, maka anda akan di diskualifikasi).</span>
+           <Button v-if="isCameraReady && !photoPreview" @click="takePhoto" class="w-full">
+             <CameraIcon class="w-4 h-4 mr-2" />
+             Ambil Foto
+           </Button>
         </div>
       </Card>
 
@@ -44,8 +58,8 @@
         </CardContent>
       </Card>
 
-      <Button size="lg" class="w-full h-14 text-lg" :disabled="!isCameraReady" @click="startExam">
-        Sembunyikan Peringatan & Mulai Ujian
+      <Button size="lg" class="w-full h-14 text-lg" :disabled="!isCameraReady || !photoPreview || isUploading" @click="startExam">
+        {{ isUploading ? 'Mengunggah Foto...' : 'Sembunyikan Peringatan & Mulai Ujian' }}
       </Button>
     </div>
   </div>
@@ -58,14 +72,17 @@ import { useExamStore } from '@/stores/exam'
 import { useCamera } from '@/composables/useCamera'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircleIcon, AlertCircleIcon } from 'lucide-vue-next'
+import { CheckCircleIcon, AlertCircleIcon, CameraIcon } from 'lucide-vue-next'
+import client from '@/api/client'
 
 const router = useRouter()
 const examStore = useExamStore()
-const { startCamera, stopCamera, error: cameraError, isVideoLoading: cameraLoading } = useCamera()
+const { startCamera, stopCamera, takeSnapshot, error: cameraError, isVideoLoading: cameraLoading } = useCamera()
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const isCameraReady = ref(false)
+const photoPreview = ref<string | null>(null)
+const isUploading = ref(false)
 
 const initCam = async () => {
   if (videoRef.value) {
@@ -86,16 +103,60 @@ onUnmounted(() => {
   stopCamera()
 })
 
+const takePhoto = () => {
+  if (videoRef.value) {
+    photoPreview.value = takeSnapshot(videoRef.value)
+  }
+}
+
+const retakePhoto = () => {
+  photoPreview.value = null
+}
+
+const dataURItoBlob = (dataURI: string) => {
+  const parts = dataURI.split(',');
+  const byteString = atob(parts[1] || '');
+  const mimeString = parts[0]?.split(':')[1]?.split(';')[0] || 'image/jpeg';
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mimeString });
+}
+
 const startExam = async () => {
+  if (!photoPreview.value) {
+    alert("Silakan ambil foto selfie KTP terlebih dahulu.");
+    return;
+  }
+
+  isUploading.value = true;
   try {
+    const participantId = examStore.participantId || localStorage.getItem('participantId');
+    if (!participantId) throw new Error("Participant ID tidak ditemukan");
+
+    const blob = dataURItoBlob(photoPreview.value);
+    const formData = new FormData();
+    formData.append('selfie', blob, 'selfie.jpg');
+
+    await client.post(`/exam/participant/${participantId}/selfie`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
     // Attempt fullscreen
     if (document.documentElement.requestFullscreen) {
       await document.documentElement.requestFullscreen()
     }
+    
+    router.push(`/exam/${examStore.sessionId}`)
   } catch (e) {
-    console.warn("Fullscreen permission denied", e)
+    console.warn("Fullscreen or upload error", e)
+    alert("Gagal mengunggah foto. Pastikan koneksi stabil.");
+  } finally {
+    isUploading.value = false;
   }
-  
-  router.push(`/exam/${examStore.sessionId}`)
 }
 </script>

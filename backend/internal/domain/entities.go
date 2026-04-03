@@ -80,6 +80,7 @@ type SessionParticipant struct {
 	JoinedAt       time.Time  `json:"joined_at"`
 	DisconnectedAt *time.Time `json:"disconnected_at"`
 	Status         string     `json:"status"` // active, disconnected, finished
+	KtpSelfieURL   *string    `json:"ktp_selfie_url,omitempty"`
 }
 
 // ─── Module ──────────────────────────────────────────────────────────────────

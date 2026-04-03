@@ -28,19 +28,19 @@ func (r *ParticipantRepository) Create(ctx context.Context, p *domain.SessionPar
 
 func (r *ParticipantRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.SessionParticipant, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT sp.id, sp.session_id, sp.user_id, u.name, u.email, sp.token_id, sp.joined_at, sp.disconnected_at, sp.status
+		`SELECT sp.id, sp.session_id, sp.user_id, u.name, u.email, sp.token_id, sp.joined_at, sp.disconnected_at, sp.status, sp.ktp_selfie_url
 		 FROM session_participants sp JOIN users u ON sp.user_id = u.id WHERE sp.id=$1`, id)
 	p := &domain.SessionParticipant{}
-	return p, row.Scan(&p.ID, &p.SessionID, &p.UserID, &p.UserName, &p.UserEmail, &p.TokenID, &p.JoinedAt, &p.DisconnectedAt, &p.Status)
+	return p, row.Scan(&p.ID, &p.SessionID, &p.UserID, &p.UserName, &p.UserEmail, &p.TokenID, &p.JoinedAt, &p.DisconnectedAt, &p.Status, &p.KtpSelfieURL)
 }
 
 func (r *ParticipantRepository) FindByUserAndSession(ctx context.Context, userID, sessionID uuid.UUID) (*domain.SessionParticipant, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT sp.id, sp.session_id, sp.user_id, u.name, u.email, sp.token_id, sp.joined_at, sp.disconnected_at, sp.status
+		`SELECT sp.id, sp.session_id, sp.user_id, u.name, u.email, sp.token_id, sp.joined_at, sp.disconnected_at, sp.status, sp.ktp_selfie_url
 		 FROM session_participants sp JOIN users u ON sp.user_id = u.id
 		 WHERE sp.user_id=$1 AND sp.session_id=$2`, userID, sessionID)
 	p := &domain.SessionParticipant{}
-	err := row.Scan(&p.ID, &p.SessionID, &p.UserID, &p.UserName, &p.UserEmail, &p.TokenID, &p.JoinedAt, &p.DisconnectedAt, &p.Status)
+	err := row.Scan(&p.ID, &p.SessionID, &p.UserID, &p.UserName, &p.UserEmail, &p.TokenID, &p.JoinedAt, &p.DisconnectedAt, &p.Status, &p.KtpSelfieURL)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (r *ParticipantRepository) FindByUserAndSession(ctx context.Context, userID
 
 func (r *ParticipantRepository) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]domain.SessionParticipant, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT sp.id, sp.session_id, sp.user_id, u.name, u.email, sp.token_id, sp.joined_at, sp.disconnected_at, sp.status
+		`SELECT sp.id, sp.session_id, sp.user_id, u.name, u.email, sp.token_id, sp.joined_at, sp.disconnected_at, sp.status, sp.ktp_selfie_url
 		 FROM session_participants sp JOIN users u ON sp.user_id = u.id WHERE sp.session_id=$1 ORDER BY sp.joined_at ASC`, sessionID)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func (r *ParticipantRepository) ListBySession(ctx context.Context, sessionID uui
 	var list []domain.SessionParticipant
 	for rows.Next() {
 		var p domain.SessionParticipant
-		if err := rows.Scan(&p.ID, &p.SessionID, &p.UserID, &p.UserName, &p.UserEmail, &p.TokenID, &p.JoinedAt, &p.DisconnectedAt, &p.Status); err != nil {
+		if err := rows.Scan(&p.ID, &p.SessionID, &p.UserID, &p.UserName, &p.UserEmail, &p.TokenID, &p.JoinedAt, &p.DisconnectedAt, &p.Status, &p.KtpSelfieURL); err != nil {
 			return nil, err
 		}
 		list = append(list, p)
@@ -74,6 +74,11 @@ func (r *ParticipantRepository) UpdateStatus(ctx context.Context, id uuid.UUID, 
 		return err
 	}
 	_, err := r.db.Exec(ctx, `UPDATE session_participants SET status=$1 WHERE id=$2`, status, id)
+	return err
+}
+
+func (r *ParticipantRepository) UpdateSelfie(ctx context.Context, id uuid.UUID, url string) error {
+	_, err := r.db.Exec(ctx, `UPDATE session_participants SET ktp_selfie_url=$1 WHERE id=$2`, url, id)
 	return err
 }
 

@@ -345,3 +345,7 @@ func (uc *ExamUseCase) GetParticipants(ctx context.Context, sessionID uuid.UUID)
 func (uc *ExamUseCase) GetParticipantByID(ctx context.Context, participantID uuid.UUID) (*domain.SessionParticipant, error) {
 	return uc.participantRepo.FindByID(ctx, participantID)
 }
+
+func (uc *ExamUseCase) UpdateSelfieUrl(ctx context.Context, participantID uuid.UUID, url string) error {
+	return uc.participantRepo.UpdateSelfie(ctx, participantID, url)
+}

@@ -825,6 +825,66 @@ func (h *QuestionHTTPHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "soal berhasil dihapus"})
 }
 
+// POST /api/exam/participant/:participantId/selfie
+func (h *ExamHandler) UploadSelfie(c *gin.Context) {
+	participantIDStr := c.Param("participantId")
+	participantID, err := uuid.Parse(participantIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid participant_id"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("selfie")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file selfie tidak ditemukan"})
+		return
+	}
+	defer file.Close()
+
+	if header.Size > 5*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran gambar maksimal 5MB"})
+		return
+	}
+
+	ext := filepath.Ext(header.Filename)
+	if ext == "" {
+		ext = ".jpg" // default if blob doesn't have ext
+	}
+	
+	imgDir := filepath.Join(h.uploadDir, "selfies")
+	if err := os.MkdirAll(imgDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal membuat direktori upload"})
+		return
+	}
+
+	filename := fmt.Sprintf("%s_%s%s", participantID.String(), time.Now().Format("20060102150405"), ext)
+	dstPath := filepath.Join(imgDir, filename)
+
+	if err := c.SaveUploadedFile(header, dstPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal menyimpan gambar selfie"})
+		return
+	}
+
+	var existingSelfiePath string
+	p, err := h.examUC.GetParticipantByID(c.Request.Context(), participantID)
+	if err == nil && p.KtpSelfieURL != nil && *p.KtpSelfieURL != "" {
+		existingSelfiePath = filepath.Join(h.uploadDir, strings.TrimPrefix(*p.KtpSelfieURL, "/uploads"))
+	}
+
+	imgURL := "/uploads/selfies/" + filename
+	if err := h.examUC.UpdateSelfieUrl(c.Request.Context(), participantID, imgURL); err != nil {
+		os.Remove(dstPath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
+		return
+	}
+
+	if existingSelfiePath != "" {
+		os.Remove(existingSelfiePath)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "selfie berhasil diunggah", "url": imgURL})
+}
+
 func normalizeQuestionType(t string) string {
 	switch strings.ToLower(strings.TrimSpace(t)) {
 	case "multiple_choice", "multiple choice", "pilihan ganda", "":
@@ -839,4 +899,5 @@ func normalizeQuestionType(t string) string {
 		return t
 	}
 }
+
 

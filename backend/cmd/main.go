@@ -148,6 +148,7 @@ func main() {
 		api.POST("/exam/:sessionId/answers/autosave", examH.AutoSaveAnswers)
 		api.GET("/exam/answers/:participantId", examH.GetParticipantAnswersPublic)
 		api.GET("/exam/participant/:participantId/status", examH.GetParticipantStatus)
+		api.POST("/exam/participant/:participantId/selfie", examH.UploadSelfie)
 		api.POST("/violations", examH.ReportViolation)
 		api.GET("/job-positions/active", jobPositionH.ListActive)
 		// WebSocket (no JWT auth, uses query params for role/participant)
