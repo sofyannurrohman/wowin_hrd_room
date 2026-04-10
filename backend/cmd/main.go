@@ -65,6 +65,7 @@ func main() {
 	logRepo := repository.NewLogRepository(db)
 	dashboardRepo := repository.NewDashboardRepository(db)
 	jobPositionRepo := repository.NewJobPositionRepository(db)
+	monitoringRepo := repository.NewMonitoringRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
 
 	// Use cases
@@ -76,7 +77,7 @@ func main() {
 	}
 
 	authUC := usecase.NewAuthUseCase(userRepo, jwtManager)
-	sessionUC := usecase.NewSessionUseCase(sessionRepo, moduleRepo, tokenRepo, logRepo, emailSender, cfg.AppBaseURL)
+	sessionUC := usecase.NewSessionUseCase(sessionRepo, moduleRepo, tokenRepo, logRepo, monitoringRepo, violationRepo, emailSender, cfg.AppBaseURL, uploadDir)
 	moduleUC := usecase.NewModuleUseCase(moduleRepo)
 	jobPositionUC := usecase.NewJobPositionUseCase(jobPositionRepo)
 	examUC := usecase.NewExamUseCase(participantRepo, answerRepo, resultRepo, questionRepo, moduleRepo, sessionRepo, tokenRepo, userRepo)
@@ -212,6 +213,8 @@ func main() {
 			// Participants & Monitor
 			hrRoutes.GET("sessions/:id/participants", examH.GetParticipants)
 			hrRoutes.GET("sessions/:id/violations", examH.GetViolations)
+			hrRoutes.GET("sessions/:id/participants/:participantId/monitoring", examH.GetMonitoringPhotos)
+			hrRoutes.POST("sessions/:id/monitoring", examH.SaveMonitoringPhoto)
 
 			// Results & Review
 			hrRoutes.GET("sessions/:id/results", examH.GetResults)
@@ -239,6 +242,24 @@ func main() {
 			adminRoutes.GET("logs", adminH.GetLogs)
 		}
 	}
+
+	// ─── Background Tasks ─────────────────────────────────────────────────────
+	go func() {
+		ticker := time.NewTicker(12 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				log.Println("Running cleanup task for old monitoring photos...")
+				count, err := sessionUC.CleanupOldMonitoringPhotos(context.Background())
+				if err != nil {
+					log.Printf("Cleanup task failed: %v", err)
+				} else {
+					log.Printf("Cleanup task finished. Deleted %d photos.", count)
+				}
+			}
+		}
+	}()
 
 	addr := ":" + cfg.AppPort
 	log.Printf("🚀 HRD Room Backend running on %s", addr)

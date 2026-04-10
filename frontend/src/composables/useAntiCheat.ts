@@ -43,7 +43,7 @@ const getOrCreateFaceMesh = async (): Promise<FaceMesh> => {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useAntiCheat() {
+export function useAntiCheat(options?: { onViolation?: (type: string) => void }) {
   const isDetecting = ref(false)
   const faceStatus = ref<'normal' | 'no-face' | 'multi-face' | 'looking-away'>('normal')
   const examStore = useExamStore()
@@ -56,7 +56,11 @@ export function useAntiCheat() {
   const reportViolation = (type: string) => {
     const now = Date.now()
     if (now - lastViolationTime > 5000) { // Max 1 report every 5s
-      examStore.reportViolation(type)
+      if (options?.onViolation) {
+        options.onViolation(type)
+      } else {
+        examStore.reportViolation(type)
+      }
       lastViolationTime = now
     }
   }

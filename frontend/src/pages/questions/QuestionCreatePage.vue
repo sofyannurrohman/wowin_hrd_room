@@ -96,7 +96,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import client from '@/api/client'
 
 import { Card, CardContent } from '@/components/ui/card'
@@ -108,12 +108,13 @@ import { ArrowLeftIcon, TrashIcon } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 
 const router = useRouter()
+const route = useRoute()
 const modules = ref<any[]>([])
 
 const loading = ref(false)
 
 const form = ref({
-  module_id: '',
+  module_id: (route.query.moduleId as string) || '',
   content: '',
   type: 'multiple_choice',
   weight: 1.0,
@@ -135,6 +136,11 @@ onMounted(async () => {
     try {
       const res = await client.get('/modules')
       modules.value = res.data.modules || []
+      
+      // Double check moduleId from query
+      if (route.query.moduleId) {
+          form.value.module_id = route.query.moduleId as string
+      }
     } catch(e) {
       toast.error('Gagal memuat daftar modul')
     }

@@ -194,13 +194,22 @@ export const useExamStore = defineStore('exam', {
       }
     },
 
-    async reportViolation(type: string) {
+    async reportViolation(type: string, proofImage?: string) {
       if (!this.participantId || !this.sessionId) return
       await client.post('/violations', {
         participant_id: this.participantId,
         session_id: this.sessionId,
-        violation_type: type
+        violation_type: type,
+        proof_image: proofImage
       }).catch(e => console.error('Failed to report violation', e))
+    },
+
+    async uploadMonitoringSnapshot(imageData: string) {
+      if (!this.participantId || !this.sessionId) return
+      await client.post(`/sessions/${this.sessionId}/monitoring`, {
+        participant_id: this.participantId,
+        image_data: imageData
+      }).catch(e => console.error('Failed to upload monitoring photo', e))
     },
 
     clearExam() {

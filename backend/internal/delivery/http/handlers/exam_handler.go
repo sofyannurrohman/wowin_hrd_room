@@ -305,6 +305,7 @@ func (h *ExamHandler) ReportViolation(c *gin.Context) {
 		ParticipantID string `json:"participant_id" binding:"required"`
 		SessionID     string `json:"session_id" binding:"required"`
 		ViolationType string `json:"violation_type" binding:"required"`
+		ProofImage    string `json:"proof_image"` // optional base64
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
@@ -317,13 +318,13 @@ func (h *ExamHandler) ReportViolation(c *gin.Context) {
 		return
 	}
 
-	v := &domain.Violation{
-		ID:            uuid.New(),
-		ParticipantID: participantID,
-		ViolationType: req.ViolationType,
+	sessionID, err := uuid.Parse(req.SessionID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session_id"})
+		return
 	}
 
-	if err := h.vRepo.Create(c.Request.Context(), v); err != nil {
+	if err := h.sessionUC.ReportViolationWithProof(c.Request.Context(), sessionID, participantID, req.ViolationType, req.ProofImage); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
 		return
 	}
@@ -343,7 +344,50 @@ func (h *ExamHandler) ReportViolation(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": v.ID, "message": "pelanggaran dicatat"})
+	c.Status(http.StatusCreated)
+}
+
+// POST /api/sessions/:id/monitoring
+func (h *ExamHandler) SaveMonitoringPhoto(c *gin.Context) {
+	sessionID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		return
+	}
+
+	var req struct {
+		ParticipantID string `json:"participant_id" binding:"required"`
+		ImageData     string `json:"image_data" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": handleError(err)})
+		return
+	}
+
+	pID, _ := uuid.Parse(req.ParticipantID)
+	if err := h.sessionUC.SaveMonitoringPhoto(c.Request.Context(), sessionID, pID, req.ImageData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
+		return
+	}
+
+	c.Status(http.StatusCreated)
+}
+
+// GET /api/sessions/:id/participants/:participantId/monitoring
+func (h *ExamHandler) GetMonitoringPhotos(c *gin.Context) {
+	pID, err := uuid.Parse(c.Param("participantId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid participant id"})
+		return
+	}
+
+	photos, err := h.sessionUC.GetMonitoringPhotos(c.Request.Context(), pID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": handleError(err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, photos)
 }
 
 // GET /api/sessions/:id/violations

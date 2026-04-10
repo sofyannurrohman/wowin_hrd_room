@@ -56,6 +56,12 @@
               </RouterLink>
               <div class="absolute right-0 top-0 flex gap-2">
                 <RouterLink
+                  :to="`/modules/${mod.id}`"
+                  class="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                >
+                  <EyeIcon class="w-4 h-4" />
+                </RouterLink>
+                <RouterLink
                   :to="`/modules/edit/${mod.id}`"
                   class="text-slate-400 hover:text-blue-600 transition-colors p-1"
                 >
@@ -99,7 +105,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { PlusIcon, LayersIcon, Edit2Icon, Trash2Icon, CalendarIcon, SearchIcon } from 'lucide-vue-next'
+import { PlusIcon, LayersIcon, Edit2Icon, Trash2Icon, CalendarIcon, SearchIcon, EyeIcon } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import client from '@/api/client'
 import { useDataTable } from '@/composables/useDataTable'

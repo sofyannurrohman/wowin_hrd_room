@@ -489,20 +489,31 @@ const setAnswer = (questionId: string, payload: any) => { examStore.setAnswer(qu
 const videoRef = ref<HTMLVideoElement | null>(null)
 const captureCanvas = ref<HTMLCanvasElement | null>(null)
 const { stream: cameraStream, startCamera, stopCamera } = useCamera()
-const { faceStatus, initFaceDetection, startDetection, stopDetection, setupBrowserAntiCheat, removeBrowserAntiCheat } = useAntiCheat()
+const { faceStatus, initFaceDetection, startDetection, stopDetection, setupBrowserAntiCheat, removeBrowserAntiCheat } = useAntiCheat({
+  onViolation: (type) => {
+    const proof = captureFrameData()
+    examStore.reportViolation(type, proof || undefined)
+  }
+})
 const { sessionEnded, sendCameraFrame, sendParticipantFinish } = useWebSocket(sessionId, examStore.participantId || undefined)
 
 let frameCaptureInterval: number | null = null
 let autoSaveInterval: number | null = null
+let monitoringInterval: number | null = null
 
-const captureAndSendFrame = () => {
+const captureFrameData = () => {
   const video = videoRef.value
   const canvas = captureCanvas.value
-  if (!video || !canvas || video.readyState < 2) return
+  if (!video || !canvas || video.readyState < 2) return null
   const ctx = canvas.getContext('2d')
-  if (!ctx) return
+  if (!ctx) return null
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-  sendCameraFrame(canvas.toDataURL('image/jpeg', 0.5))
+  return canvas.toDataURL('image/jpeg', 0.6)
+}
+
+const captureAndSendFrame = () => {
+  const data = captureFrameData()
+  if (data) sendCameraFrame(data)
 }
 
 const statusBorderClass = computed(() => {
@@ -571,6 +582,12 @@ onMounted(async () => {
     examStore.autoSaveToBackend()
   }, 30_000)
 
+  // Monitoring snapshots every 5 minutes
+  monitoringInterval = window.setInterval(() => {
+    const data = captureFrameData()
+    if (data) examStore.uploadMonitoringSnapshot(data)
+  }, 5 * 60 * 1000)
+
   // Only start countdown if there is actually time remaining (avoids instant submit on reload)
   if (timeRemaining.value > 0) {
     timerInterval = window.setInterval(() => {
@@ -600,6 +617,7 @@ onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval)
   if (frameCaptureInterval) clearInterval(frameCaptureInterval)
   if (autoSaveInterval) clearInterval(autoSaveInterval)
+  if (monitoringInterval) clearInterval(monitoringInterval)
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 

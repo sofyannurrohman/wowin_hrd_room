@@ -171,6 +171,21 @@
               <label class="text-sm font-medium text-slate-700">Maks Peserta</label>
               <Input v-model.number="editForm.max_participants" type="number" min="1" />
             </div>
+            
+            <div class="space-y-2 pt-2 border-t">
+              <label class="text-sm font-bold text-slate-800">Modul Soal (Wajib)</label>
+              <div class="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto pr-2">
+                <label v-for="m in allModules" :key="m.id" class="flex items-center gap-3 p-2 border rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                  <input type="checkbox" :value="m.id" v-model="selectedModuleIds" class="w-4 h-4 rounded text-blue-600" />
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-slate-800">{{ m.name }}</p>
+                    <p class="text-[10px] text-slate-500 line-clamp-1">{{ m.description || 'Tidak ada deskripsi' }}</p>
+                  </div>
+                </label>
+              </div>
+              <p class="text-[10px] text-slate-400">Pilih modul yang akan dikerjakan oleh peserta dalam sesi ini.</p>
+            </div>
+
             <div class="flex items-center gap-6">
               <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                 <input type="checkbox" v-model="editForm.randomize_questions" class="rounded" />
@@ -226,6 +241,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
+import client from '@/api/client'
 import { toast } from 'vue-sonner'
 import { useDataTable } from '@/composables/useDataTable'
 import DataTablePagination from '@/components/shared/DataTablePagination.vue'
@@ -256,8 +272,17 @@ const filteredSessions = computed(() => {
   })
 })
 
+const allModules = ref<any[]>([])
+const selectedModuleIds = ref<string[]>([])
+
 onMounted(async () => {
   await sessionStore.fetchSessions()
+  try {
+    const res = await client.get('/modules')
+    allModules.value = res.data.modules || []
+  } catch(e) {
+    console.error('Gagal memuat modul:', e)
+  }
 })
 
 const {
@@ -292,7 +317,7 @@ const toLocalDatetime = (iso: string) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-const openEditModal = (session: any) => {
+const openEditModal = async (session: any) => {
   editModal.sessionId = session.id
   editForm.name = session.name
   editForm.schedule = toLocalDatetime(session.schedule)
@@ -301,11 +326,27 @@ const openEditModal = (session: any) => {
   editForm.randomize_questions = session.randomize_questions
   editForm.show_score = session.show_score
   editError.value = ''
+  
+  // Fetch assigned modules
+  selectedModuleIds.value = []
+  try {
+    const res = await client.get(`/sessions/${session.id}/modules`)
+    const assigned = res.data || []
+    selectedModuleIds.value = assigned.map((m: any) => m.id)
+  } catch(e) {
+    toast.error('Gagal mengambil data modul sesi.')
+  }
+  
   editModal.open = true
 }
 
 const saveEdit = async () => {
   if (!editForm.name.trim()) { editError.value = 'Nama sesi tidak boleh kosong.'; return }
+  if (selectedModuleIds.value.length === 0) {
+    editError.value = 'Minimal satu modul soal harus dipilih.'
+    return
+  }
+
   editModal.saving = true
   editError.value = ''
   try {
@@ -316,6 +357,7 @@ const saveEdit = async () => {
       max_participants: editForm.max_participants,
       randomize_questions: editForm.randomize_questions,
       show_score: editForm.show_score,
+      module_ids: selectedModuleIds.value,
     })
     editModal.open = false
     toast.success('Sesi berhasil diperbarui.')

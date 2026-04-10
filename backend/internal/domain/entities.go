@@ -173,6 +173,17 @@ type Violation struct {
 	ViolationType string    `json:"violation_type"`
 	DetectedAt    time.Time `json:"detected_at"`
 	Resolved      bool      `json:"resolved"`
+	ProofURL      *string    `json:"proof_url,omitempty"`
+}
+
+// ─── MonitoringPhoto ────────────────────────────────────────────────────────
+
+type MonitoringPhoto struct {
+	ID            uuid.UUID `json:"id"`
+	ParticipantID uuid.UUID `json:"participant_id"`
+	SessionID     uuid.UUID `json:"session_id"`
+	PhotoURL      string    `json:"photo_url"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // ─── CameraLog ───────────────────────────────────────────────────────────────

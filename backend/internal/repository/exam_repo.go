@@ -204,15 +204,15 @@ func NewViolationRepository(db *pgxpool.Pool) *ViolationRepository {
 
 func (r *ViolationRepository) Create(ctx context.Context, v *domain.Violation) error {
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO violations (id, participant_id, violation_type, detected_at, resolved)
-		 VALUES ($1,$2,$3,$4,$5)`,
-		v.ID, v.ParticipantID, v.ViolationType, time.Now(), false)
+		`INSERT INTO violations (id, participant_id, violation_type, detected_at, resolved, proof_url)
+		 VALUES ($1,$2,$3,$4,$5,$6)`,
+		v.ID, v.ParticipantID, v.ViolationType, time.Now(), false, v.ProofURL)
 	return err
 }
 
 func (r *ViolationRepository) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]domain.Violation, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT v.id, v.participant_id, sp.session_id, u.name, v.violation_type, v.detected_at, v.resolved
+		`SELECT v.id, v.participant_id, sp.session_id, u.name, v.violation_type, v.detected_at, v.resolved, v.proof_url
 		 FROM violations v
 		 JOIN session_participants sp ON v.participant_id = sp.id
 		 JOIN users u ON sp.user_id = u.id
@@ -225,7 +225,7 @@ func (r *ViolationRepository) ListBySession(ctx context.Context, sessionID uuid.
 	var violations []domain.Violation
 	for rows.Next() {
 		var viol domain.Violation
-		if err := rows.Scan(&viol.ID, &viol.ParticipantID, &viol.SessionID, &viol.UserName, &viol.ViolationType, &viol.DetectedAt, &viol.Resolved); err != nil {
+		if err := rows.Scan(&viol.ID, &viol.ParticipantID, &viol.SessionID, &viol.UserName, &viol.ViolationType, &viol.DetectedAt, &viol.Resolved, &viol.ProofURL); err != nil {
 			return nil, err
 		}
 		violations = append(violations, viol)
@@ -235,7 +235,7 @@ func (r *ViolationRepository) ListBySession(ctx context.Context, sessionID uuid.
 
 func (r *ViolationRepository) ListByParticipant(ctx context.Context, participantID uuid.UUID) ([]domain.Violation, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT id, participant_id, '', '', violation_type, detected_at, resolved
+		`SELECT id, participant_id, session_id, '', violation_type, detected_at, resolved, proof_url
 		 FROM violations WHERE participant_id=$1 ORDER BY detected_at DESC`, participantID)
 	if err != nil {
 		return nil, err
@@ -245,7 +245,7 @@ func (r *ViolationRepository) ListByParticipant(ctx context.Context, participant
 	var violations []domain.Violation
 	for rows.Next() {
 		var v domain.Violation
-		if err := rows.Scan(&v.ID, &v.ParticipantID, &v.SessionID, &v.UserName, &v.ViolationType, &v.DetectedAt, &v.Resolved); err != nil {
+		if err := rows.Scan(&v.ID, &v.ParticipantID, &v.SessionID, &v.UserName, &v.ViolationType, &v.DetectedAt, &v.Resolved, &v.ProofURL); err != nil {
 			return nil, err
 		}
 		violations = append(violations, v)

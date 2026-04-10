@@ -133,6 +133,10 @@ const submit = async () => {
     showError('Nama sesi harus diisi')
     return
   }
+  if (selectedModules.value.length === 0) {
+    showError('Silakan pilih minimal satu modul soal')
+    return
+  }
   loading.value = true
   alertMessage.value = ''
   try {

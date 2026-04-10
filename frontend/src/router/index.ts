@@ -138,6 +138,11 @@ const router = createRouter({
           component: () => import('../pages/modules/ModuleEditPage.vue')
         },
         {
+          path: '/modules/:id',
+          name: 'moduleDetail',
+          component: () => import('../pages/modules/ModuleDetailPage.vue')
+        },
+        {
           path: '/questions',
           name: 'questionsList',
           component: () => import('../pages/questions/QuestionsPage.vue')

@@ -161,6 +161,23 @@
               </p>
               <p class="text-[11px] text-slate-400 mt-1 font-mono">{{ formatTime(v.detected_at) }}</p>
             </div>
+
+            <!-- Evidence Preview -->
+            <div v-if="v.proof_url" class="shrink-0 flex flex-col items-center gap-2">
+               <div 
+                 class="w-16 h-12 rounded-lg border border-slate-200 overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all shadow-sm bg-slate-100"
+                 @click="zoomedProof = v.proof_url"
+               >
+                 <img :src="v.proof_url" class="w-full h-full object-cover" />
+               </div>
+               <button @click="zoomedProof = v.proof_url" class="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-0.5">
+                  <ImageIcon class="w-2.5 h-2.5" /> LIHAT BUKTI
+               </button>
+            </div>
+            <div v-else class="shrink-0 flex flex-col items-center justify-center p-2 opacity-40">
+               <CameraOffIcon class="w-5 h-5 text-slate-400" />
+               <p class="text-[8px] font-bold text-slate-500 mt-1 uppercase text-center w-16">Bukti dihapus<br/>(> 7 Hari)</p>
+            </div>
           </div>
 
           <div v-if="filteredViolations.length > 0" class="pt-4">
@@ -179,6 +196,36 @@
         </div>
       </div>
     </div>
+
+    <!-- Zoom Modal -->
+    <div 
+      v-if="zoomedProof" 
+      class="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
+      @click="zoomedProof = null"
+    >
+       <div class="relative max-w-4xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+          <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+             <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                   <ShieldAlertIcon class="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-slate-800 uppercase tracking-tight">Bukti Pelanggaran</h3>
+                  <p class="text-[11px] text-slate-500 font-medium tracking-wide">Snaphot otomatis ditangkap sistem</p>
+                </div>
+             </div>
+             <button @click="zoomedProof = null" class="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                <XIcon class="w-5 h-5 text-slate-500" />
+             </button>
+          </div>
+          <div class="aspect-video bg-black flex items-center justify-center">
+             <img :src="zoomedProof" class="max-w-full max-h-[70vh] object-contain" />
+          </div>
+          <div class="p-4 bg-white flex justify-end border-t border-slate-100">
+             <Button variant="outline" size="sm" @click="zoomedProof = null">Tutup</Button>
+          </div>
+       </div>
+    </div>
   </div>
 </template>
 
@@ -193,7 +240,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeftIcon, DownloadIcon, SearchIcon, ShieldAlertIcon,
   AlertTriangleIcon, EyeOffIcon, MonitorOffIcon, MaximizeIcon,
-  ShieldCheckIcon, CameraOffIcon, ScanEyeIcon
+  ShieldCheckIcon, CameraOffIcon, ScanEyeIcon, ImageIcon, XIcon
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -206,6 +253,7 @@ const search = ref('')
 const filterType = ref('')
 const sortBy = ref('time_desc')
 const selectedParticipantId = ref<string | null>(null)
+const zoomedProof = ref<string | null>(null)
 
 onMounted(async () => {
   try {

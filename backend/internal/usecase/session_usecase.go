@@ -2,7 +2,12 @@ package usecase
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"hrd_room/backend/internal/domain"
@@ -14,16 +19,29 @@ import (
 )
 
 type SessionUseCase struct {
-	sessionRepo *repository.SessionRepository
-	moduleRepo  *repository.ModuleRepository
-	tokenRepo   *repository.TokenRepository
-	logRepo     *repository.LogRepository
-	emailSender email.Sender
-	baseURL     string
+	sessionRepo    *repository.SessionRepository
+	moduleRepo     *repository.ModuleRepository
+	tokenRepo      *repository.TokenRepository
+	logRepo        *repository.LogRepository
+	monitoringRepo *repository.MonitoringRepository
+	violationRepo  *repository.ViolationRepository
+	emailSender    email.Sender
+	baseURL        string
+	uploadDir      string
 }
 
-func NewSessionUseCase(sr *repository.SessionRepository, mr *repository.ModuleRepository, tr *repository.TokenRepository, lr *repository.LogRepository, es email.Sender, baseURL string) *SessionUseCase {
-	return &SessionUseCase{sessionRepo: sr, moduleRepo: mr, tokenRepo: tr, logRepo: lr, emailSender: es, baseURL: baseURL}
+func NewSessionUseCase(sr *repository.SessionRepository, mr *repository.ModuleRepository, tr *repository.TokenRepository, lr *repository.LogRepository, monr *repository.MonitoringRepository, vr *repository.ViolationRepository, es email.Sender, baseURL, uploadDir string) *SessionUseCase {
+	return &SessionUseCase{
+		sessionRepo:    sr,
+		moduleRepo:     mr,
+		tokenRepo:      tr,
+		logRepo:        lr,
+		monitoringRepo: monr,
+		violationRepo:  vr,
+		emailSender:    es,
+		baseURL:        baseURL,
+		uploadDir:      uploadDir,
+	}
 }
 
 type CreateSessionRequest struct {
@@ -33,12 +51,16 @@ type CreateSessionRequest struct {
 	MaxParticipants    int         `json:"max_participants"`
 	RandomizeQuestions bool        `json:"randomize_questions"`
 	ShowScore          bool        `json:"show_score"`
-	ModuleIDs          []uuid.UUID `json:"module_ids"`
+	ModuleIDs          []uuid.UUID `json:"module_ids" binding:"required,gt=0"`
 }
 
 func (uc *SessionUseCase) Create(ctx context.Context, createdBy uuid.UUID, req CreateSessionRequest) (*domain.Session, error) {
+	if len(req.ModuleIDs) == 0 {
+		return nil, errors.New("minimal satu modul soal harus dipilih")
+	}
+
 	maxP := req.MaxParticipants
-	if maxP == 0 || maxP > 20 {
+	if maxP <= 0 || maxP > 20 {
 		maxP = 20
 	}
 
@@ -63,7 +85,10 @@ func (uc *SessionUseCase) Create(ctx context.Context, createdBy uuid.UUID, req C
 			ModuleID:  mID,
 			SortOrder: i,
 		}
-		_ = uc.moduleRepo.AddSessionModule(ctx, sm)
+		if err := uc.moduleRepo.AddSessionModule(ctx, sm); err != nil {
+			// If we fail here, we should ideally rollback, but at least we don't return success
+			return nil, fmt.Errorf("gagal menambahkan modul ke sesi: %w", err)
+		}
 	}
 
 	return s, nil
@@ -81,6 +106,10 @@ func (uc *SessionUseCase) List(ctx context.Context, role string, userID uuid.UUI
 }
 
 func (uc *SessionUseCase) Update(ctx context.Context, id uuid.UUID, req CreateSessionRequest) (*domain.Session, error) {
+	if len(req.ModuleIDs) == 0 {
+		return nil, errors.New("minimal satu modul soal harus dipilih")
+	}
+
 	s, err := uc.sessionRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -96,14 +125,19 @@ func (uc *SessionUseCase) Update(ctx context.Context, id uuid.UUID, req CreateSe
 		return nil, err
 	}
 
-	_ = uc.moduleRepo.DeleteSessionModules(ctx, s.ID)
+	if err := uc.moduleRepo.DeleteSessionModules(ctx, s.ID); err != nil {
+		return nil, fmt.Errorf("gagal memperbarui modul sesi: %w", err)
+	}
+
 	for i, mID := range req.ModuleIDs {
 		sm := &domain.SessionModule{
 			SessionID: s.ID,
 			ModuleID:  mID,
 			SortOrder: i,
 		}
-		_ = uc.moduleRepo.AddSessionModule(ctx, sm)
+		if err := uc.moduleRepo.AddSessionModule(ctx, sm); err != nil {
+			return nil, fmt.Errorf("gagal menambahkan modul ke sesi: %w", err)
+		}
 	}
 
 	return s, nil
@@ -111,6 +145,116 @@ func (uc *SessionUseCase) Update(ctx context.Context, id uuid.UUID, req CreateSe
 
 func (uc *SessionUseCase) Delete(ctx context.Context, id uuid.UUID) error {
 	return uc.sessionRepo.Delete(ctx, id)
+}
+
+func (uc *SessionUseCase) SaveMonitoringPhoto(ctx context.Context, sessionID, participantID uuid.UUID, base64Data string) error {
+	path, err := uc.saveBase64Image(base64Data, "monitoring")
+	if err != nil {
+		return err
+	}
+
+	p := &domain.MonitoringPhoto{
+		ID:            uuid.New(),
+		SessionID:     sessionID,
+		ParticipantID: participantID,
+		PhotoURL:      path,
+		CreatedAt:     time.Now(),
+	}
+
+	return uc.monitoringRepo.Create(ctx, p)
+}
+
+func (uc *SessionUseCase) ReportViolationWithProof(ctx context.Context, sessionID, participantID uuid.UUID, vType, base64Data string) error {
+	var proofURL *string
+	if base64Data != "" {
+		path, err := uc.saveBase64Image(base64Data, "violations")
+		if err == nil {
+			proofURL = &path
+		}
+	}
+
+	v := &domain.Violation{
+		ID:            uuid.New(),
+		ParticipantID: participantID,
+		SessionID:     sessionID,
+		ViolationType: vType,
+		DetectedAt:    time.Now(),
+		ProofURL:      proofURL,
+	}
+
+	return uc.violationRepo.Create(ctx, v)
+}
+
+func (uc *SessionUseCase) GetMonitoringPhotos(ctx context.Context, participantID uuid.UUID) ([]domain.MonitoringPhoto, error) {
+	return uc.monitoringRepo.ListByParticipant(ctx, participantID)
+}
+
+func (uc *SessionUseCase) CleanupOldMonitoringPhotos(ctx context.Context) (int, error) {
+	const days = 7
+	photos, err := uc.monitoringRepo.GetOldPhotos(ctx, days)
+	if err != nil {
+		return 0, err
+	}
+
+	var photoIDs []uuid.UUID
+	count := 0
+	for _, p := range photos {
+		// Try delete file
+		filePath := filepath.Join(uc.uploadDir, strings.TrimPrefix(p.PhotoURL, "/uploads/"))
+		_ = os.Remove(filePath)
+		photoIDs = append(photoIDs, p.ID)
+		count++
+	}
+
+	if len(photoIDs) > 0 {
+		_ = uc.monitoringRepo.DeletePhotos(ctx, photoIDs)
+	}
+
+	// Also cleanup violation proofs
+	viols, err := uc.monitoringRepo.GetOldViolations(ctx, days)
+	if err == nil {
+		var violIDs []uuid.UUID
+		for _, v := range viols {
+			if v.ProofURL != nil {
+				filePath := filepath.Join(uc.uploadDir, strings.TrimPrefix(*v.ProofURL, "/uploads/"))
+				_ = os.Remove(filePath)
+				violIDs = append(violIDs, v.ID)
+				count++
+			}
+		}
+		if len(violIDs) > 0 {
+			_ = uc.monitoringRepo.ClearProofURLs(ctx, violIDs)
+		}
+	}
+
+	return count, nil
+}
+
+func (uc *SessionUseCase) saveBase64Image(data, subDir string) (string, error) {
+	// data is "data:image/jpeg;base64,..."
+	parts := strings.Split(data, ",")
+	if len(parts) < 2 {
+		return "", errors.New("invalid base64 data")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", err
+	}
+
+	dir := filepath.Join(uc.uploadDir, subDir)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+
+	filename := fmt.Sprintf("%d_%s.jpg", time.Now().UnixNano(), uuid.New().String()[:8])
+	dst := filepath.Join(dir, filename)
+
+	if err := os.WriteFile(dst, decoded, 0644); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("/uploads/%s/%s", subDir, filename), nil
 }
 
 func (uc *SessionUseCase) Lock(ctx context.Context, id uuid.UUID, locked bool) error {

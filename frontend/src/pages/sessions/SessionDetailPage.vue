@@ -39,12 +39,12 @@
         </div>
         <div>
           <Label class="text-muted-foreground">Status / Peserta</Label>
-          <p>{{ session.is_locked ? 'Terkunci' : 'Aktif' }} ({{ session.participant_count || 0 }} dari {{ session.max_participants }})</p>
+          <p>{{ session.is_locked ? 'Terkunci' : 'Aktif' }} ({{ session.total_participant_count || 0 }} dari {{ session.max_participants }})</p>
         </div>
       </CardContent>
     </Card>
 
-    <!-- Token Generation -->
+    <!-- Token Management -->
     <Card>
       <CardHeader>
         <CardTitle>Manajemen Token</CardTitle>
@@ -87,6 +87,64 @@
       </CardContent>
     </Card>
 
+    <!-- Participants List -->
+    <Card>
+      <CardHeader>
+        <div class="flex items-center justify-between">
+          <div>
+            <CardTitle>Daftar Peserta Bergabung</CardTitle>
+            <CardDescription>Daftar peserta yang Sedang atau Telah mengikuti sesi ini.</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" @click="loadParticipants" :disabled="loadingParticipants">
+            <RefreshCwIcon class="w-4 h-4 mr-2" :class="{ 'animate-spin': loadingParticipants }" /> Segarkan
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Peserta</TableHead>
+              <TableHead>Mulai</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead class="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="p in sessionParticipants" :key="p.id" class="group">
+              <TableCell>
+                <div class="flex items-center gap-3">
+                  <img :src="p.ktp_selfie_url || `https://api.dicebear.com/7.x/initials/svg?seed=${p.user_name || '?'}&backgroundColor=1e3a8a&textColor=ffffff`" class="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                  <div>
+                    <div class="font-bold text-slate-800 text-sm">{{ p.user_name || 'Unknown' }}</div>
+                    <div class="text-xs text-slate-500">{{ p.user_email }}</div>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell class="text-xs text-slate-500">
+                {{ p.joined_at ? new Date(p.joined_at).toLocaleString() : '-' }}
+              </TableCell>
+              <TableCell>
+                <Badge :variant="p.status === 'finished' ? 'secondary' : (p.status === 'active' ? 'default' : 'outline')">
+                  {{ p.status === 'active' ? 'Sedang Mengerjakan' : (p.status === 'finished' ? 'Selesai' : p.status) }}
+                </Badge>
+              </TableCell>
+              <TableCell class="text-right">
+                <div class="flex justify-end gap-2">
+                   <Button variant="outline" size="sm" class="h-8 text-[11px] font-bold gap-1.5" @click="openMonitoring(p)">
+                     <CameraIcon class="w-3.5 h-3.5" /> MONITORING
+                   </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+            <TableRow v-if="sessionParticipants.length === 0">
+              <TableCell colspan="4" class="text-center py-10 text-slate-400 font-medium italic">Belum ada peserta yang bergabung ke sesi ini.</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+
     <!-- Invite Participants Modal -->
     <Teleport to="body">
       <div v-if="showInviteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showInviteModal = false">
@@ -100,7 +158,7 @@
           </div>
           
           <div class="p-5 overflow-y-auto flex-1 bg-slate-50 relative">
-            <div v-if="loadingParticipants" class="text-center py-10 text-slate-400">Memuat data peserta...</div>
+            <div v-if="loadingParticipantsList" class="text-center py-10 text-slate-400">Memuat data peserta...</div>
             <div v-else-if="allParticipants.length === 0" class="text-center py-10 text-slate-400">Tidak ada peserta tersedia. Tembahkan peserta di menu Participant Management.</div>
             <div v-else class="space-y-2">
               <label v-for="p in allParticipants" :key="p.id" class="flex items-center gap-4 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-blue-400 transition-colors">
@@ -128,6 +186,15 @@
       </div>
     </Teleport>
 
+    <!-- Monitoring Gallery Modal -->
+    <MonitoringGalleryModal 
+      :is-open="isMonitoringOpen" 
+      :participant-id="selectedParticipant?.id" 
+      :participant-name="selectedParticipant?.user_name"
+      :session-id="sessionId"
+      @close="isMonitoringOpen = false"
+    />
+
   </div>
   <div v-else class="text-center py-20 text-muted-foreground">Memuat detail sesi...</div>
 </template>
@@ -141,8 +208,12 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeftIcon, MonitorPlayIcon, FileTextIcon, ShieldAlertIcon, BarChart3Icon, MailIcon } from 'lucide-vue-next'
+import { 
+  ArrowLeftIcon, MonitorPlayIcon, FileTextIcon, ShieldAlertIcon, BarChart3Icon, 
+  MailIcon, CameraIcon, RefreshCwIcon 
+} from 'lucide-vue-next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import MonitoringGalleryModal from '@/components/sessions/MonitoringGalleryModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -150,8 +221,14 @@ const sessionId = route.params.id as string
 
 const session = ref<any>(null)
 const tokens = ref<any[]>([])
+const sessionParticipants = ref<any[]>([])
+const loadingParticipants = ref(false)
 const alertMessage = ref('')
 const alertVariant = ref<'default' | 'destructive'>('default')
+
+// Monitoring State
+const isMonitoringOpen = ref(false)
+const selectedParticipant = ref<any>(null)
 
 const showSuccess = (message: string) => {
   alertVariant.value = 'default'
@@ -170,8 +247,22 @@ const loadData = async () => {
     
     const resT = await client.get(`/sessions/${sessionId}/tokens`)
     tokens.value = resT.data || []
+
+    await loadParticipants()
   } catch (e) {
     showError('Gagal memuat detail sesi.')
+  }
+}
+
+const loadParticipants = async () => {
+  loadingParticipants.value = true
+  try {
+    const res = await client.get(`/sessions/${sessionId}/participants`)
+    sessionParticipants.value = res.data || []
+  } catch (e) {
+    console.error('Failed to load participants', e)
+  } finally {
+    loadingParticipants.value = false
   }
 }
 
@@ -185,21 +276,21 @@ const copy = (txt: string) => {
 // ─── Invite Logic ───────────────────────────────────────────────
 const showInviteModal = ref(false)
 const allParticipants = ref<any[]>([])
-const loadingParticipants = ref(false)
+const loadingParticipantsList = ref(false)
 const selectedParticipantIds = ref<string[]>([])
 const inviting = ref(false)
 
 const openInviteModal = async () => {
   showInviteModal.value = true
   selectedParticipantIds.value = []
-  loadingParticipants.value = true
+  loadingParticipantsList.value = true
   try {
     const res = await client.get('/participants')
     allParticipants.value = res.data || []
   } catch (err) {
     showError('Gagal memuat list peserta')
   } finally {
-    loadingParticipants.value = false
+    loadingParticipantsList.value = false
   }
 }
 
@@ -222,8 +313,6 @@ const generateAndInvite = async () => {
         bound_email: user.email
       })
       successCount++
-      // In a real app, this is where the backend would send the email via SMTP/SendGrid.
-      // For now, the token is generated and bound to their email.
     } catch (err) {
       errorCount++
     }
@@ -234,10 +323,15 @@ const generateAndInvite = async () => {
   
   if (successCount > 0) {
     showSuccess(`Berhasil mengundang ${successCount} peserta via email.`)
-    await loadData() // Refresh token table
+    await loadData() // Refresh token table and participant list
   }
   if (errorCount > 0) {
     setTimeout(() => showError(`Gagal mengundang ${errorCount} peserta.`), 2000)
   }
+}
+
+const openMonitoring = (p: any) => {
+  selectedParticipant.value = p
+  isMonitoringOpen.value = true
 }
 </script>
