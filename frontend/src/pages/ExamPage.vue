@@ -99,6 +99,59 @@
       </div>
     </div>
 
+    <!-- ─── Memorization Overlay ────────────────────────────────────── -->
+    <div v-if="showingMemorization" class="fixed inset-0 z-40 bg-slate-900 flex flex-col items-center justify-center p-6 text-white overflow-y-auto">
+      <div class="max-w-3xl w-full bg-slate-800 rounded-3xl p-8 md:p-12 shadow-2xl border border-slate-700 relative">
+        <div class="flex flex-col items-center text-center gap-6">
+          <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+            <svg class="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+          </div>
+          
+          <div class="space-y-2">
+            <h2 class="text-3xl font-extrabold tracking-tight">Fase Menghafal</h2>
+            <p class="text-slate-400 text-lg">Ingat kata-kata di bawah ini sebelum waktu habis</p>
+          </div>
+
+          <div class="w-full bg-slate-900/50 rounded-2xl p-8 border border-slate-700/50 min-h-[200px] flex items-center justify-center">
+            <p class="text-2xl md:text-3xl font-bold tracking-wide leading-relaxed whitespace-pre-wrap text-blue-50">
+              {{ currentModuleMemorizationContent }}
+            </p>
+          </div>
+
+          <div class="flex flex-col items-center gap-4">
+             <div class="flex items-center gap-3 px-6 py-3 bg-red-500/10 rounded-2xl border border-red-500/20">
+                <span class="text-sm font-bold text-red-400 uppercase tracking-widest">Sisa Waktu</span>
+                <span class="text-3xl font-black text-white font-mono leading-none">{{ formattedMemorizationTime }}</span>
+             </div>
+             <p class="text-slate-500 text-sm max-w-sm">
+                Pastikan Anda fokus. Layar ini akan tertutup otomatis saat waktu habis dan anda tidak bisa kembali lagi.
+             </p>
+          </div>
+
+          <button 
+            @click="finishMemorization" 
+            class="mt-4 px-10 py-4 bg-white text-slate-900 font-bold rounded-2xl hover:bg-slate-100 transition-all shadow-xl hover:scale-105 active:scale-95 text-lg"
+          >
+            Saya Sudah Hafal & Lanjut
+          </button>
+        </div>
+      </div>
+      
+      <!-- Anti-cheat reminder during memorization -->
+      <div class="mt-8 flex items-center gap-6 opacity-60">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-green-400"></span>
+          <span class="text-xs font-semibold uppercase tracking-widest">Camera Monitoring Active</span>
+        </div>
+        <div class="flex items-center gap-2">
+           <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+           <span class="text-xs font-semibold uppercase tracking-widest">Tab Lock Enabled</span>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Main 3-column layout (always mounted to keep camera alive) ── -->
     <main class="flex-1 max-w-[1400px] w-full mx-auto px-4 py-5 grid grid-cols-[210px_1fr_230px] gap-5">
 
@@ -389,6 +442,7 @@ const examStore = useExamStore()
 const sessionId = route.params.sessionId as string
 const showSubmitDialog = ref(false)
 const showingTransition = ref(false)
+const showingMemorization = ref(false)
 const zoomedImageUrl = ref<string | null>(null)
 
 // ─── Module helpers ───────────────────────────────────────────────
@@ -397,6 +451,9 @@ const isLastQuestionInModule = computed(() => currentQuestionIndex.value >= tota
 
 const currentModuleTitle = computed(() =>
   examStore.moduleGroups[examStore.currentModuleIndex]?.name || `Modul ${examStore.currentModuleIndex + 1}`
+)
+const currentModuleMemorizationContent = computed(() =>
+  examStore.modules[examStore.currentModuleIndex]?.memorization_content || ''
 )
 const nextModuleTitle = computed(() =>
   examStore.moduleGroups[examStore.currentModuleIndex + 1]?.name || `Modul ${examStore.currentModuleIndex + 2}`
@@ -533,6 +590,59 @@ const formattedTime = computed(() => {
 })
 const isTimeLow = computed(() => timeRemaining.value < 300)
 
+// ─── Memorization Phase ──────────────────────────────────────────
+const memorizationTimeRemaining = ref(0)
+let memorizationTimer: number | null = null
+
+const formattedMemorizationTime = computed(() => {
+  const m = Math.floor(memorizationTimeRemaining.value / 60).toString().padStart(2, '0')
+  const s = (memorizationTimeRemaining.value % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+})
+
+const checkAndStartMemorization = () => {
+  const currentModule = examStore.modules[examStore.currentModuleIndex]
+  if (!currentModule || !currentModule.memorization_duration) {
+    showingMemorization.value = false
+    return
+  }
+
+  // Check if already memorized for this session/module
+  const key = `exam_memorized_${examStore.participantId}_${currentModule.id}`
+  if (localStorage.getItem(key)) {
+    showingMemorization.value = false
+    return
+  }
+
+  showingMemorization.value = true
+  memorizationTimeRemaining.value = currentModule.memorization_duration
+  
+  if (memorizationTimer) clearInterval(memorizationTimer)
+  memorizationTimer = window.setInterval(() => {
+    if (memorizationTimeRemaining.value > 0) {
+      memorizationTimeRemaining.value--
+    } else {
+      finishMemorization()
+    }
+  }, 1000)
+}
+
+const finishMemorization = () => {
+  if (memorizationTimer) {
+    clearInterval(memorizationTimer)
+    memorizationTimer = null
+  }
+  
+  const currentModule = examStore.modules[examStore.currentModuleIndex]
+  if (currentModule) {
+    const key = `exam_memorized_${examStore.participantId}_${currentModule.id}`
+    localStorage.setItem(key, 'true')
+  }
+  
+  showingMemorization.value = false
+  toast.success('Hafalan selesai. Silakan kerjakan soal.')
+}
+
 // ─── Navigation Guards ───────────────────────────────────────────
 // Warn participants when they try to close / reload the browser tab
 const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -567,6 +677,8 @@ onMounted(async () => {
 
   // Restore answers from backend (merge with any localStorage answers already loaded)
   await examStore.fetchAnswersFromBackend()
+
+  checkAndStartMemorization()
 
   if (videoRef.value) {
     await startCamera(videoRef.value)
@@ -615,6 +727,7 @@ onUnmounted(() => {
   stopDetection()
   removeBrowserAntiCheat()
   if (timerInterval) clearInterval(timerInterval)
+  if (memorizationTimer) clearInterval(memorizationTimer)
   if (frameCaptureInterval) clearInterval(frameCaptureInterval)
   if (autoSaveInterval) clearInterval(autoSaveInterval)
   if (monitoringInterval) clearInterval(monitoringInterval)
@@ -645,6 +758,7 @@ const handlePrimaryAction = () => {
 const startNextModule = () => {
   showingTransition.value = false
   currentQuestionIndex.value = 0
+  checkAndStartMemorization()
 }
 
 const goToPreviousModule = () => {

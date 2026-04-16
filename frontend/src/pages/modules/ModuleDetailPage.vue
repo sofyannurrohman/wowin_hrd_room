@@ -53,6 +53,19 @@
               </div>
             </div>
           </div>
+          <div v-if="module.memorization_duration > 0" class="border-t border-slate-100 bg-blue-50/30 p-6 flex flex-col md:flex-row gap-6">
+            <div class="shrink-0">
+               <p class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Durasi Menghafal</p>
+               <div class="flex items-center gap-2">
+                 <span class="text-xl font-black text-blue-700">{{ module.memorization_duration }}s</span>
+                 <span class="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full font-bold">{{ Math.floor(module.memorization_duration / 60) }}m {{ module.memorization_duration % 60 }}s</span>
+               </div>
+            </div>
+            <div class="flex-1">
+               <p class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Konten Hafalan</p>
+               <p class="text-slate-600 text-sm italic line-clamp-2 leading-relaxed">{{ module.memorization_content }}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

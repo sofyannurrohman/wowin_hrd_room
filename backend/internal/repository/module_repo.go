@@ -19,17 +19,17 @@ func NewModuleRepository(db *pgxpool.Pool) *ModuleRepository {
 }
 
 func (r *ModuleRepository) Create(ctx context.Context, m *domain.Module) error {
-	query := `INSERT INTO modules (id, name, description, total_weight, created_by, created_at)
-	          VALUES ($1,$2,$3,$4,$5,$6)`
-	_, err := r.db.Exec(ctx, query, m.ID, m.Name, m.Description, m.TotalWeight, m.CreatedBy, time.Now())
+	query := `INSERT INTO modules (id, name, description, memorization_content, memorization_duration, total_weight, created_by, created_at)
+	          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	_, err := r.db.Exec(ctx, query, m.ID, m.Name, m.Description, m.MemorizationContent, m.MemorizationDuration, m.TotalWeight, m.CreatedBy, time.Now())
 	return err
 }
 
 func (r *ModuleRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Module, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, name, description, total_weight, created_by, created_at FROM modules WHERE id=$1`, id)
+		`SELECT id, name, description, memorization_content, memorization_duration, total_weight, created_by, created_at FROM modules WHERE id=$1`, id)
 	m := &domain.Module{}
-	err := row.Scan(&m.ID, &m.Name, &m.Description, &m.TotalWeight, &m.CreatedBy, &m.CreatedAt)
+	err := row.Scan(&m.ID, &m.Name, &m.Description, &m.MemorizationContent, &m.MemorizationDuration, &m.TotalWeight, &m.CreatedBy, &m.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (r *ModuleRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.
 }
 
 func (r *ModuleRepository) ListAll(ctx context.Context) ([]domain.Module, error) {
-	query := `SELECT id, name, description, total_weight, created_by, created_at FROM modules ORDER BY created_at DESC`
+	query := `SELECT id, name, description, memorization_content, memorization_duration, total_weight, created_by, created_at FROM modules ORDER BY created_at DESC`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func (r *ModuleRepository) ListAll(ctx context.Context) ([]domain.Module, error)
 	var modules []domain.Module
 	for rows.Next() {
 		var m domain.Module
-		if err := rows.Scan(&m.ID, &m.Name, &m.Description, &m.TotalWeight, &m.CreatedBy, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.Name, &m.Description, &m.MemorizationContent, &m.MemorizationDuration, &m.TotalWeight, &m.CreatedBy, &m.CreatedAt); err != nil {
 			return nil, err
 		}
 		modules = append(modules, m)
@@ -57,8 +57,8 @@ func (r *ModuleRepository) ListAll(ctx context.Context) ([]domain.Module, error)
 
 func (r *ModuleRepository) Update(ctx context.Context, m *domain.Module) error {
 	_, err := r.db.Exec(ctx,
-		`UPDATE modules SET name=$1, description=$2, total_weight=$3 WHERE id=$4`,
-		m.Name, m.Description, m.TotalWeight, m.ID)
+		`UPDATE modules SET name=$1, description=$2, memorization_content=$3, memorization_duration=$4, total_weight=$5 WHERE id=$6`,
+		m.Name, m.Description, m.MemorizationContent, m.MemorizationDuration, m.TotalWeight, m.ID)
 	return err
 }
 
@@ -80,7 +80,7 @@ func (r *ModuleRepository) DeleteSessionModules(ctx context.Context, sessionID u
 
 func (r *ModuleRepository) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]domain.Module, error) {
 	query := `
-		SELECT m.id, m.name, m.description, m.total_weight, m.created_by, m.created_at
+		SELECT m.id, m.name, m.description, m.memorization_content, m.memorization_duration, m.total_weight, m.created_by, m.created_at
 		FROM modules m
 		JOIN session_modules sm ON sm.module_id = m.id
 		WHERE sm.session_id = $1
@@ -95,7 +95,7 @@ func (r *ModuleRepository) ListBySession(ctx context.Context, sessionID uuid.UUI
 	var modules []domain.Module
 	for rows.Next() {
 		var m domain.Module
-		if err := rows.Scan(&m.ID, &m.Name, &m.Description, &m.TotalWeight, &m.CreatedBy, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.Name, &m.Description, &m.MemorizationContent, &m.MemorizationDuration, &m.TotalWeight, &m.CreatedBy, &m.CreatedAt); err != nil {
 			return nil, err
 		}
 		modules = append(modules, m)
