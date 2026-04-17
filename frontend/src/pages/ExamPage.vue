@@ -114,9 +114,9 @@
             <p class="text-slate-400 text-lg">Ingat kata-kata di bawah ini sebelum waktu habis</p>
           </div>
 
-          <div class="w-full bg-slate-900/50 rounded-2xl p-8 border border-slate-700/50 min-h-[200px] flex items-center justify-center">
-            <p class="text-2xl md:text-3xl font-bold tracking-wide leading-relaxed whitespace-pre-wrap text-blue-50">
-              {{ currentModuleMemorizationContent }}
+          <div class="w-full bg-slate-900/50 rounded-2xl p-8 border border-slate-700/50 min-h-[250px] flex items-center justify-center">
+            <p class="text-xl md:text-2xl font-bold tracking-wide leading-loose whitespace-pre-wrap text-blue-50 text-left w-full max-w-2xl mx-auto">
+              {{ currentModuleMemorizationContent.replace(/\\n/g, '\n') }}
             </p>
           </div>
 
