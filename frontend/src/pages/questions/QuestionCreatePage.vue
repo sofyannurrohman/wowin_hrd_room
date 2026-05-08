@@ -17,6 +17,7 @@
               <option value="true_false">Benar / Salah</option>
               <option value="short_answer">Isian Singkat</option>
               <option value="essay">Esai / Psikologi (Review Manual)</option>
+              <option value="typing_test">Tes Kecepatan Mengetik</option>
             </select>
           </div>
 
@@ -30,6 +31,12 @@
               <Label for="weight">Bobot / Poin</Label>
               <Input id="weight" type="number" step="0.01" min="0.01" v-model.number="form.weight" placeholder="1.0" required />
               <p class="text-xs text-slate-500">Bobot spesifik pertanyaan ini terhadap total bobot modul.</p>
+            </div>
+
+            <div class="space-y-2" v-if="form.type === 'typing_test'">
+              <Label for="timer_limit">Batas Waktu (Detik)</Label>
+              <Input id="timer_limit" type="number" min="0" v-model.number="form.timer_limit" placeholder="120" required />
+              <p class="text-xs text-slate-500">Default adalah 120 detik (2 menit). Set ke 0 untuk mengikuti timer global.</p>
             </div>
           </div>
 
@@ -118,6 +125,7 @@ const form = ref({
   content: '',
   type: 'multiple_choice',
   weight: 1.0,
+  timer_limit: 120,
 })
 
 const fileObj = ref<File | null>(null)
@@ -168,6 +176,7 @@ const submit = async () => {
     formData.append('weight', form.value.weight.toString())
     if (form.value.module_id) formData.append('module_id', form.value.module_id)
     if (fileObj.value) formData.append('image', fileObj.value)
+    formData.append('timer_limit', form.value.timer_limit.toString())
 
     // Append options as JSON string based on type
     let finalOptions: any[] = []

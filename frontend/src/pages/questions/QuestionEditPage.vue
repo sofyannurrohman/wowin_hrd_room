@@ -22,6 +22,7 @@
               <option value="true_false">Benar / Salah</option>
               <option value="short_answer">Isian Singkat</option>
               <option value="essay">Esai / Psikologi (Review Manual)</option>
+              <option value="typing_test">Tes Kecepatan Mengetik</option>
             </select>
           </div>
 
@@ -32,11 +33,17 @@
             </div>
 
             <div class="space-y-2">
-              <Label for="weight">Bobot / Poin</Label>
-              <Input id="weight" type="number" step="0.01" min="0.01" v-model.number="form.weight" placeholder="1.0" required />
-              <p class="text-xs text-slate-500">Bobot spesifik pertanyaan ini terhadap total bobot modul.</p>
-            </div>
-          </div>
+               <Label for="weight">Bobot / Poin</Label>
+               <Input id="weight" type="number" step="0.01" min="0.01" v-model.number="form.weight" placeholder="1.0" required />
+               <p class="text-xs text-slate-500">Bobot spesifik pertanyaan ini terhadap total bobot modul.</p>
+             </div>
+
+             <div class="space-y-2" v-if="form.type === 'typing_test'">
+               <Label for="timer_limit">Batas Waktu (Detik)</Label>
+               <Input id="timer_limit" type="number" min="0" v-model.number="form.timer_limit" placeholder="120" required />
+               <p class="text-xs text-slate-500">Default adalah 120 detik (2 menit). Set ke 0 untuk mengikuti timer global.</p>
+             </div>
+           </div>
 
           <div class="space-y-2">
             <Label for="image">Gambar Lampiran Baru (Opsional)</Label>
@@ -138,6 +145,7 @@ const form = ref({
   content: '',
   type: 'multiple_choice',
   weight: 1.0,
+  timer_limit: 120,
 })
 
 const fileObj = ref<File | null>(null)
@@ -178,6 +186,7 @@ onMounted(async () => {
         form.value.content = data.content
         form.value.type = data.type
         form.value.weight = data.weight || 1.0
+        form.value.timer_limit = data.timer_limit || 120
         existingImage.value = data.image_url
 
         if (data.options && data.options.length > 0) {
@@ -223,6 +232,7 @@ const submit = async () => {
     formData.append('type', form.value.type)
     formData.append('weight', form.value.weight.toString())
     if (fileObj.value) formData.append('image', fileObj.value)
+    formData.append('timer_limit', form.value.timer_limit.toString())
 
     let finalOptions: any[] = []
 

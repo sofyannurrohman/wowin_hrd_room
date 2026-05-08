@@ -45,7 +45,7 @@
           <button
             v-if="examStore.currentModuleIndex > 0"
             @click="goToPreviousModule"
-            :disabled="examStore.isSubmitting || showingTransition"
+            :disabled="examStore.isSubmitting || showingTransition || isTypingTest"
             class="flex items-center gap-2 px-4 py-2.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -176,12 +176,12 @@
             </div>
           </div>
           <!-- Grid -->
-          <div class="grid grid-cols-5 gap-1.5">
+          <div v-if="!isTypingTest" class="grid grid-cols-5 gap-1.5">
             <button
               v-for="(q, idx) in examStore.questions"
               :key="q.id"
               @click="goToQuestion(idx)"
-              class="relative h-8 w-full rounded-md text-xs font-medium border transition-all"
+              class="relative h-8 w-full rounded-md text-xs font-medium border transition-all hover:border-blue-300"
               :class="navButtonClass(q, idx)"
             >
               {{ idx + 1 }}
@@ -191,6 +191,9 @@
                 class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-yellow-400 border border-white"
               ></span>
             </button>
+          </div>
+          <div v-else class="text-xs text-center text-gray-500 py-4 bg-gray-50 rounded-lg border border-gray-100">
+            Navigasi dikunci selama<br/><span class="font-semibold text-blue-600 mt-1 inline-block">Tes Mengetik</span>
           </div>
         </div>
       </aside>
@@ -260,7 +263,7 @@
             </div>
 
             <!-- Essay / Short Answer -->
-            <div v-else class="px-6 pb-4">
+            <div v-else-if="currentQuestion.type === 'short_answer' || currentQuestion.type === 'essay' || currentQuestion.type === 'psychological'" class="px-6 pb-4">
               <textarea
                 class="w-full min-h-[140px] p-3 text-sm border border-gray-200 rounded-xl resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Tulis jawaban Anda di sini..."
@@ -268,13 +271,24 @@
                 @input="(e) => setAnswer(currentQuestion.id, { text_answer: (e.target as HTMLTextAreaElement).value })"
               ></textarea>
             </div>
+
+            <!-- Typing Test -->
+            <div v-else-if="currentQuestion.type === 'typing_test'" class="px-6 pb-6 pt-2">
+               <TypingTest 
+                  :target-text="currentQuestion.content"
+                  :timer-limit="currentQuestion.timer_limit"
+                  @update="(results) => setAnswer(currentQuestion.id, { text_answer: JSON.stringify(results) })"
+                  @complete="handleTypingComplete"
+                  @time-up="handleTypingTimeUp"
+               />
+            </div>
           </div>
 
           <!-- Navigation bar -->
           <div class="mt-4 flex items-center justify-between">
             <button
               @click="prevQuestion"
-              :disabled="currentQuestionIndex === 0"
+              :disabled="currentQuestionIndex === 0 || isTypingTest"
               class="flex items-center gap-2 px-5 py-2.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -283,7 +297,8 @@
 
             <button
               @click="toggleMarkForReview"
-              class="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-colors"
+              :disabled="isTypingTest"
+              class="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               :class="markedForReview.has(currentQuestion.id)
                 ? 'bg-yellow-100 border border-yellow-400 text-yellow-800'
                 : 'border border-gray-300 bg-white text-gray-600 hover:bg-gray-50'"
@@ -296,7 +311,7 @@
 
             <button
               @click="nextQuestion"
-              :disabled="currentQuestionIndex >= totalQuestions - 1"
+              :disabled="currentQuestionIndex >= totalQuestions - 1 || isTypingTest"
               class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Next Question
@@ -434,6 +449,7 @@ import { useCamera } from '@/composables/useCamera'
 import { useAntiCheat } from '@/composables/useAntiCheat'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { toast } from 'vue-sonner'
+import TypingTest from '@/components/exam/TypingTest.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -465,6 +481,7 @@ const markedForReview = ref<Set<string>>(new Set())
 
 const totalQuestions = computed(() => examStore.questions.length)
 const currentQuestion = computed(() => examStore.questions[currentQuestionIndex.value] ?? null)
+const isTypingTest = computed(() => currentQuestion.value?.type === 'typing_test')
 
 // Global progress counts answered across ALL modules
 const answeredCount = computed(() => {
@@ -503,6 +520,7 @@ const questionTypeBadge = (type: string) => {
     'true_false': 'True / False',
     'short_answer': 'Short Answer',
     'psychological': 'Psychological',
+    'typing_test': 'Typing Test',
   }
   return map[type] ?? type
 }
@@ -528,9 +546,16 @@ const navButtonClass = (q: any, idx: number) => {
   return 'bg-white border-gray-200 text-gray-600 hover:border-blue-300'
 }
 
-const goToQuestion = (idx: number) => { currentQuestionIndex.value = idx }
-const prevQuestion = () => { if (currentQuestionIndex.value > 0) currentQuestionIndex.value-- }
-const nextQuestion = () => { if (currentQuestionIndex.value < totalQuestions.value - 1) currentQuestionIndex.value++ }
+const goToQuestion = (idx: number) => { 
+  if (isTypingTest.value) return
+  currentQuestionIndex.value = idx 
+}
+const prevQuestion = () => { 
+  if (currentQuestionIndex.value > 0) currentQuestionIndex.value-- 
+}
+const nextQuestion = () => { 
+  if (currentQuestionIndex.value < totalQuestions.value - 1) currentQuestionIndex.value++ 
+}
 
 const toggleMarkForReview = () => {
   if (!currentQuestion.value) return
@@ -736,13 +761,12 @@ onUnmounted(() => {
 
 // ─── Actions ──────────────────────────────────────────────────────
 const handlePrimaryAction = () => {
-  if (isLastModule.value) {
-    // On the last module, Finish Test ends the exam
-    showSubmitDialog.value = true
-  } else if (isLastQuestionInModule.value) {
-    // Autosave before moving to next module
-    examStore.autoSaveToBackend()
+  if (!isLastQuestionInModule.value) {
+    // Still within module — just advance to next question
+    nextQuestion()
+  } else if (!isLastModule.value) {
     // Last question of the current module → show transition to next module
+    examStore.autoSaveToBackend()
     examStore.currentModuleIndex++
     examStore.loadCurrentModuleQuestions()
     currentQuestionIndex.value = 0
@@ -750,8 +774,8 @@ const handlePrimaryAction = () => {
     showingTransition.value = true
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } else {
-    // Still within module — just advance to next question
-    nextQuestion()
+    // Last question of the last module → Finish Test ends the exam
+    showSubmitDialog.value = true
   }
 }
 
@@ -788,6 +812,19 @@ const doSubmit = async () => {
   } else {
     toast.error('Gagal mengirim jawaban. Silakan coba lagi.')
   }
+}
+
+const handleTypingComplete = (results: any) => {
+  setAnswer(currentQuestion.value.id, { text_answer: JSON.stringify(results) })
+  toast.success('Paragraf selesai diketik.')
+  // Optional: Auto-next? User said 5 paragraphs, maybe they want to manually click next or auto-next.
+  // Given "5 paragraphs each 2 min", auto-next on complete might be good.
+  handlePrimaryAction()
+}
+
+const handleTypingTimeUp = () => {
+  toast.error('Waktu habis untuk paragraf ini.')
+  handlePrimaryAction()
 }
 
 watch(faceStatus, (newStat) => {

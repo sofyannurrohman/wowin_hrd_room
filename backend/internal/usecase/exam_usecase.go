@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -225,6 +226,31 @@ func (uc *ExamUseCase) AutoGrade(ctx context.Context, participantID uuid.UUID) (
 			}
 
 			if err := uc.answerRepo.UpdateGrading(ctx, ans.ID, correct, score); err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		if q.Type == domain.QuestionTypeTypingTest {
+			var metrics struct {
+				WPM      float64 `json:"wpm"`
+				Accuracy float64 `json:"accuracy"`
+			}
+			score := 0.0
+			if ans.TextAnswer != nil {
+				if err := json.Unmarshal([]byte(*ans.TextAnswer), &metrics); err == nil {
+					// Score = (WPM / 60) * (Accuracy / 100) * Weight
+					// Cap at weight
+					rawScore := (metrics.WPM / 60.0) * (metrics.Accuracy / 100.0) * q.Weight
+					if rawScore > q.Weight {
+						score = q.Weight
+					} else {
+						score = rawScore
+					}
+				}
+			}
+			totalScore += score
+			if err := uc.answerRepo.UpdateGrading(ctx, ans.ID, true, score); err != nil {
 				return nil, err
 			}
 			continue

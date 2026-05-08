@@ -109,6 +109,7 @@ const (
 	QuestionTypeTrueFalse      = "true_false"
 	QuestionTypeShortAnswer    = "short_answer"
 	QuestionTypePsychological  = "psychological"
+	QuestionTypeTypingTest     = "typing_test"
 )
 
 type Question struct {
@@ -119,6 +120,7 @@ type Question struct {
 	ImageURL             *string          `json:"image_url"`
 	Weight               float64          `json:"weight"`
 	RequiresManualReview bool             `json:"requires_manual_review"`
+	TimerLimit           int              `json:"timer_limit"`
 	CreatedAt            time.Time        `json:"created_at"`
 	Options              []QuestionOption `json:"options,omitempty"`
 }

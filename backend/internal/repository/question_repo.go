@@ -19,10 +19,10 @@ func NewQuestionRepository(db *pgxpool.Pool) *QuestionRepository {
 }
 
 func (r *QuestionRepository) Create(ctx context.Context, q *domain.Question) error {
-	query := `INSERT INTO questions (id, module_id, type, content, image_url, weight, requires_manual_review, created_at)
-	          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	query := `INSERT INTO questions (id, module_id, type, content, image_url, weight, requires_manual_review, timer_limit, created_at)
+	          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
 	_, err := r.db.Exec(ctx, query, q.ID, q.ModuleID, q.Type, q.Content, q.ImageURL,
-		q.Weight, q.RequiresManualReview, time.Now())
+		q.Weight, q.RequiresManualReview, q.TimerLimit, time.Now())
 	return err
 }
 
@@ -35,9 +35,9 @@ func (r *QuestionRepository) CreateOption(ctx context.Context, opt *domain.Quest
 
 func (r *QuestionRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Question, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, module_id, type, content, image_url, weight, requires_manual_review, created_at FROM questions WHERE id=$1`, id)
+		`SELECT id, module_id, type, content, image_url, weight, requires_manual_review, timer_limit, created_at FROM questions WHERE id=$1`, id)
 	q := &domain.Question{}
-	err := row.Scan(&q.ID, &q.ModuleID, &q.Type, &q.Content, &q.ImageURL, &q.Weight, &q.RequiresManualReview, &q.CreatedAt)
+	err := row.Scan(&q.ID, &q.ModuleID, &q.Type, &q.Content, &q.ImageURL, &q.Weight, &q.RequiresManualReview, &q.TimerLimit, &q.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (r *QuestionRepository) FindByID(ctx context.Context, id uuid.UUID) (*domai
 }
 
 func (r *QuestionRepository) ListByModule(ctx context.Context, moduleID uuid.UUID, randomize bool) ([]domain.Question, error) {
-	query := `SELECT id, module_id, type, content, image_url, weight, requires_manual_review, created_at FROM questions WHERE module_id=$1`
+	query := `SELECT id, module_id, type, content, image_url, weight, requires_manual_review, timer_limit, created_at FROM questions WHERE module_id=$1`
 	if randomize {
 		query += ` ORDER BY RANDOM()`
 	} else {
@@ -61,7 +61,7 @@ func (r *QuestionRepository) ListByModule(ctx context.Context, moduleID uuid.UUI
 	var questions []domain.Question
 	for rows.Next() {
 		var q domain.Question
-		if err := rows.Scan(&q.ID, &q.ModuleID, &q.Type, &q.Content, &q.ImageURL, &q.Weight, &q.RequiresManualReview, &q.CreatedAt); err != nil {
+		if err := rows.Scan(&q.ID, &q.ModuleID, &q.Type, &q.Content, &q.ImageURL, &q.Weight, &q.RequiresManualReview, &q.TimerLimit, &q.CreatedAt); err != nil {
 			return nil, err
 		}
 		q.Options, _ = r.GetOptions(ctx, q.ID)
@@ -78,7 +78,7 @@ func (r *QuestionRepository) GetTotalWeightByModule(ctx context.Context, moduleI
 }
 
 func (r *QuestionRepository) ListAll(ctx context.Context) ([]domain.Question, error) {
-	query := `SELECT id, module_id, type, content, image_url, weight, requires_manual_review, created_at FROM questions ORDER BY created_at DESC`
+	query := `SELECT id, module_id, type, content, image_url, weight, requires_manual_review, timer_limit, created_at FROM questions ORDER BY created_at DESC`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (r *QuestionRepository) ListAll(ctx context.Context) ([]domain.Question, er
 	var questions []domain.Question
 	for rows.Next() {
 		var q domain.Question
-		if err := rows.Scan(&q.ID, &q.ModuleID, &q.Type, &q.Content, &q.ImageURL, &q.Weight, &q.RequiresManualReview, &q.CreatedAt); err != nil {
+		if err := rows.Scan(&q.ID, &q.ModuleID, &q.Type, &q.Content, &q.ImageURL, &q.Weight, &q.RequiresManualReview, &q.TimerLimit, &q.CreatedAt); err != nil {
 			return nil, err
 		}
 		q.Options, _ = r.GetOptions(ctx, q.ID)
@@ -118,8 +118,8 @@ func (r *QuestionRepository) GetOptions(ctx context.Context, questionID uuid.UUI
 
 func (r *QuestionRepository) Update(ctx context.Context, q *domain.Question) error {
 	_, err := r.db.Exec(ctx,
-		`UPDATE questions SET type=$1, content=$2, image_url=$3, weight=$4, requires_manual_review=$5 WHERE id=$6`,
-		q.Type, q.Content, q.ImageURL, q.Weight, q.RequiresManualReview, q.ID)
+		`UPDATE questions SET type=$1, content=$2, image_url=$3, weight=$4, requires_manual_review=$5, timer_limit=$6 WHERE id=$7`,
+		q.Type, q.Content, q.ImageURL, q.Weight, q.RequiresManualReview, q.TimerLimit, q.ID)
 	return err
 }
 

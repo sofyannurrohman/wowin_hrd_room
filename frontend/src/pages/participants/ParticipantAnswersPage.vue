@@ -59,13 +59,35 @@
               <Label class="text-xs text-slate-500 mb-1 block">Kunci Jawaban / Referensi:</Label>
               <div class="p-3 bg-blue-50/50 rounded-lg border border-blue-100 text-sm text-slate-700 whitespace-pre-wrap">
                 <!-- Short Answer uses correct Option as expected text if available -->
-                {{ ans.question?.options?.find(o => o.is_correct)?.content || '(Manual review diperlukan - tidak ada kunci)' }}
+                {{ ans.question?.options?.find((o: any) => o.is_correct)?.content || '(Manual review diperlukan - tidak ada kunci)' }}
               </div>
             </div>
             
             <Label class="text-xs text-slate-500 mb-1 block">Jawaban Peserta:</Label>
             <div class="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700 whitespace-pre-wrap">
               {{ ans.text_answer || '(Tidak dijawab)' }}
+            </div>
+          </div>
+
+          <!-- Typing Test Result -->
+          <div v-else-if="ans.question?.type === 'typing_test'" class="space-y-4">
+            <div v-if="ans.text_answer" class="grid grid-cols-2 gap-4">
+               <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 text-center">
+                  <div class="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">WPM</div>
+                  <div class="text-2xl font-black text-blue-800 font-mono">{{ JSON.parse(ans.text_answer).wpm }}</div>
+               </div>
+               <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
+                  <div class="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Accuracy</div>
+                  <div class="text-2xl font-black text-emerald-800 font-mono">{{ JSON.parse(ans.text_answer).accuracy }}%</div>
+               </div>
+            </div>
+            <div v-else class="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center text-slate-400 italic">
+               Tidak ada data pengetikan.
+            </div>
+            
+            <Label class="text-xs text-slate-500 mb-1 block">Teks yang diketik:</Label>
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700 whitespace-pre-wrap font-mono">
+              {{ ans.text_answer ? JSON.parse(ans.text_answer).raw : '(Tidak ada teks)' }}
             </div>
           </div>
 
@@ -227,10 +249,11 @@ const getTypeColor = (type: string) => {
     case 'Short Answer':
     case 'short_answer':
       return 'bg-amber-100 text-amber-700 border-amber-200'
-    case 'Psychological':
     case 'psychological':
     case 'essay':
       return 'bg-teal-100 text-teal-700 border-teal-200'
+    case 'typing_test':
+      return 'bg-indigo-100 text-indigo-700 border-indigo-200'
     default: return 'bg-slate-100 text-slate-700 border-slate-200'
   }
 }
